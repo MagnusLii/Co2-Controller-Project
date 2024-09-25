@@ -1,5 +1,6 @@
 #include "FreeRTOS.h"
 #include "ModbusRegister_32.h"
+#include "RegisterHandler.h"
 #include "PicoOsUart.h"
 #include "hardware/gpio.h"
 #include "hardware/timer.h"

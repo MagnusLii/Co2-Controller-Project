@@ -2,6 +2,7 @@ add_executable(${ProjectName}
         main.cpp
         critical_section.cpp
         Fmutex.cpp
+        RegisterHandler.cpp
 
 #        ipstack/IPStack.cpp
         ipstack/tls_common.c
