@@ -41,6 +41,10 @@ target_compile_definitions(${ProjectName} PRIVATE
         PICO_CYW43_ARCH_DEFAULT_COUNTRY_CODE=CYW43_COUNTRY_FINLAND
 )
 
+target_compile_options(${ProjectName} PRIVATE
+        -Wall
+)
+
 target_link_libraries(${ProjectName} 
         pico_stdlib
         hardware_i2c
