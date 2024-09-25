@@ -2,47 +2,34 @@ add_executable(${ProjectName}
         main.cpp
         critical_section.cpp
         Fmutex.cpp
-        Fmutex.h
-        blinker.cpp
-        blinker.h
 
 #        ipstack/IPStack.cpp
-#        ipstack/IPStack.h
-        ipstack/lwipopts.h
         ipstack/tls_common.c
         ipstack/picow_tls_client.c
-        ipstack/lwipopts_tls.h
 
         i2c/PicoI2C.cpp
-        i2c/PicoI2C.h
 
         uart/PicoOsUart.cpp
-        uart/PicoOsUart.h
 
-        modbus/nanomodbus.h
         modbus/nanomodbus.c
         modbus/ModbusRegister.cpp
-        modbus/ModbusRegister.h
+        modbus/ModbusRegister_32.cpp
         modbus/ModbusClient.cpp
-        modbus/ModbusClient.h
 
         display/framebuf.cpp
-        display/framebuf.h
         display/mono_vlsb.cpp
-        display/mono_vlsb.h
 #        display/ssd1306.cpp
-#        display/ssd1306.h
-        display/ssd1306os.h
         display/ssd1306os.cpp
 )
 
 target_include_directories(${ProjectName} PRIVATE
-    ${CMAKE_CURRENT_LIST_DIR}
-        modbus
-        uart
-        i2c
-        display
-        ipstack
+        ${CMAKE_CURRENT_LIST_DIR}
+        ${INCLUDE_DIR}
+        ${INCLUDE_DIR}/display
+        ${INCLUDE_DIR}/i2c
+        ${INCLUDE_DIR}/ipstack
+        ${INCLUDE_DIR}/modbus
+        ${INCLUDE_DIR}/uart
 )
 
 target_compile_definitions(${ProjectName} PRIVATE
@@ -61,7 +48,6 @@ target_link_libraries(${ProjectName}
         pico_cyw43_arch_lwip_sys_freertos
         pico_lwip_mbedtls
         pico_mbedtls
-
 )
 
 # Ignore warnings from lwip code
