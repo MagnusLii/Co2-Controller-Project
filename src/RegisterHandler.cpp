@@ -1,15 +1,16 @@
 #include "RegisterHandler.h"
 
-
 void RegisterHandler::add_subscriber(QueueHandle_t subscriber) {
     subscribers.push_back(subscriber);
 }
 
 void RegisterHandler::remove_subscriber(QueueHandle_t subscriber) {
-    // TODO: Not sure if we need this
+    // Not sure if we really need this
+    subscribers.erase(std::remove(subscribers.begin(), subscribers.end(), subscriber),
+                      subscribers.end());
 }
 
-void RegisterHandler::send_reading(Reading reading) {
+void RegisterHandler::send_reading() {
     for (auto subscriber : subscribers) {
         xQueueSend(subscriber, &reading, 0);
     }
@@ -23,7 +24,11 @@ ModbusRegisterHandler::ModbusRegisterHandler(std::shared_ptr<ModbusClient> clien
 
 }
 
-void ModbusRegisterHandler::get_reading() {
-    reading.value.f32 = modbus_register.read_float();
-}
+void ModbusRegisterHandler::get_reading() { reading.value.f32 = modbus_register.read_float(); }
 
+void ModbusRegisterHandler::mb_read() {
+    for (;;) {
+        get_reading();
+        vTaskDelay(1000); // TBD
+    }
+}
