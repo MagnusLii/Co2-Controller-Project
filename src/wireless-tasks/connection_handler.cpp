@@ -26,9 +26,14 @@ ConnectionHandler::ConnectionHandler() = default;
 
 
 void ConnectionHandler::initializeIPStack() {
-    ipStack = std::make_unique<IPStack>(WIFI_SSID, WIFI_PASSWORD);
-    if (!ipStack->isInitialized()) {
-        ipStack.reset();
+    bool initialized = false;
+    while (!initialized) {
+        ipStack = std::make_unique<IPStack>(WIFI_SSID, WIFI_PASSWORD);
+        
+        if (!(initialized = ipStack->isInitialized())) {
+            ipStack->disconnect();
+            cyw43_arch_deinit();
+        }
     }
 }
 
@@ -104,9 +109,6 @@ bool ConnectionHandler::isIPStackInitialized() {
 
 // }
 
-
-
-// // I spent too much time trying to make it work to delete it ;(
 
 // // First argument is field value, second is field number from enum ApiFields, final argument must be nullptr to terminate the list.
 // // All fields except POST_AND_URL are optional.
