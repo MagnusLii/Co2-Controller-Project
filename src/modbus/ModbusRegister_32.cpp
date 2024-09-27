@@ -1,7 +1,7 @@
 #include "ModbusRegister_32.h"
 
-ModbusRegister32::ModbusRegister32(std::shared_ptr<ModbusClient> client_, uint8_t server_address,
-                                   uint16_t register_address, uint8_t nr_of_registers,
+ModbusRegister32::ModbusRegister32(std::shared_ptr<ModbusClient> client_, int server_address,
+                                   int register_address, int nr_of_registers,
                                    bool holding_register)
     : ModbusRegister(client_, server_address, register_address, holding_register),
       nr_of_regs(nr_of_registers) {}

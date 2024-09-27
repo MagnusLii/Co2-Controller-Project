@@ -8,17 +8,12 @@
 
 class ModbusRegister32 : public ModbusRegister {
 public:
-    ModbusRegister32(std::shared_ptr<ModbusClient> client_, uint8_t server_address, uint16_t register_address, uint8_t nr_of_registers, bool holding_register = true);
+    ModbusRegister32(std::shared_ptr<ModbusClient> client_, int server_address, int register_address, int nr_of_registers, bool holding_register = true);
     uint32_t read_32();
     void write_32(uint32_t value);
     float read_float();
 private:
-    std::shared_ptr<ModbusClient> client;
-    uint8_t server;
-    uint16_t reg_addr;
-    uint8_t nr_of_regs;
-    bool hr;
-
+    int nr_of_regs;
 };
 
 

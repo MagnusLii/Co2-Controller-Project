@@ -21,10 +21,16 @@ add_executable(${ProjectName}
         display/mono_vlsb.cpp
 #        display/ssd1306.cpp
         display/ssd1306os.cpp
+
+        test/modbus_controller.cpp
+        test/modbus_register.cpp
+        test/uart_instance.cpp
+        test/dma_channel.cpp
 )
 
 target_include_directories(${ProjectName} PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
+        ${CMAKE_CURRENT_LIST_DIR}/test
         ${INCLUDE_DIR}
         ${INCLUDE_DIR}/display
         ${INCLUDE_DIR}/i2c

@@ -60,7 +60,6 @@ class ModbusRegisterHandler : public RegisterHandler {
     }
 
     ModbusRegister32 modbus_register;
-
 };
 
 // TODO:
