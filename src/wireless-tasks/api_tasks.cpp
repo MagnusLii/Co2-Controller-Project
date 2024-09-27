@@ -99,23 +99,13 @@ void initialize_IPStack_task(void *param) {
     vTaskDelete(NULL);
 }
 
-void generate_test_data_task(void *param) {
-        const char *req = "POST /talkbacks/52920/commands/execute.json HTTP/1.1\r\n"
-                      "Host: api.thingspeak.com\r\n"
-                      "Content-Length: 24\r\n"
-                      "Content-Type: application/x-www-form-urlencoded\r\n"
-                      "\r\n"
-                      "api_key=371DAWENQKI6J8DD";
-        
-        Message msgToSend;
-        msgToSend.data = std::vector<unsigned char>(req, req + strlen(req));
-        msgToSend.length = strlen(req);
+// void generate_test_data_task(void *param) {
+//     ConnectionHandler *connHandler = static_cast<ConnectionHandler *>(param);
 
-        for(;;) {
-            if (xQueueSend(sendQueue, &msgToSend, pdMS_TO_TICKS(QUEUE_TIMEOUT)) != pdPASS) {
-                DEBUG_printf("Failed to enqueue message\n");
-            }
-
-            vTaskDelay(pdMS_TO_TICKS(10000));
-        }
-}
+//         for(;;) {
+//             vTaskDelay(pdMS_TO_TICKS(10000));
+//             connHandler->pushMessageToQueue("POST https://api.thingspeak.com/update", REQUEST_AND_URL,
+//                                             "12", FIELD1,
+//                                             nullptr);
+//         }
+// }

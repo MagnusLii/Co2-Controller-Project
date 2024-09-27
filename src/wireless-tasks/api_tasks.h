@@ -31,7 +31,7 @@ struct Message {
 
 void send_data_task(void *param);
 void receive_data_task(void *param);
-void generate_test_data_task(void *param);
 void initialize_IPStack_task(void *param);
+// void generate_test_data_task(void *param);
 
 #endif

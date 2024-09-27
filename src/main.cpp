@@ -17,9 +17,10 @@
 
 
 void test_task(void *param) {
+    ConnectionHandler *connHandler = static_cast<ConnectionHandler *>(param);
 
     for(;;) {
-        printf("test task\n");
+
         vTaskDelay(pdMS_TO_TICKS(10000));
     }
 }
@@ -30,15 +31,14 @@ int main() {
     sendQueue = xQueueCreate(SEND_QUEUE_SIZE, sizeof(Message));
     receiveQueue = xQueueCreate(RECEIVE_QUEUE_SIZE, sizeof(Message));
 
-    // IPStack ipstack(WIFI_SSID, WIFI_PASSWORD);
     ConnectionHandler connHandler = ConnectionHandler();
 
     xTaskCreate(send_data_task, "send", 1024, (void *) &connHandler, tskIDLE_PRIORITY + 1, nullptr);
     xTaskCreate(receive_data_task, "receive", 1024, (void *) &connHandler, tskIDLE_PRIORITY + 1, nullptr);
-    xTaskCreate(generate_test_data_task, "generate", 1024, nullptr, tskIDLE_PRIORITY + 1, nullptr);
+    // xTaskCreate(generate_test_data_task, "generate", 1024, (void*) &connHandler, tskIDLE_PRIORITY + 1, nullptr);
     xTaskCreate(initialize_IPStack_task, "init", 1024, (void *) &connHandler, tskIDLE_PRIORITY + 2, nullptr);
 
-    // xTaskCreate(test_task, "test", 4096, nullptr, tskIDLE_PRIORITY + 1, nullptr);
+    // xTaskCreate(test_task, "test", 4096, (void*) &connHandler, tskIDLE_PRIORITY + 1, nullptr);
     vTaskStartScheduler();
 
     for(;;){

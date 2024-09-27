@@ -5,16 +5,19 @@
 #include "IPStack.h"
 #include <vector>
 
-enum ApiFields {
-    FIELD1,
-    FIELD2,
-    FIELD3,
-    FIELD4,
-    FIELD5,
-    FIELD6,
-    FIELD7,
-    FIELD8
-};
+// enum ApiFields {
+//     REQUEST_TYPE,
+//     FIELD1,
+//     FIELD2,
+//     FIELD3,
+//     FIELD4,
+//     FIELD5,
+//     FIELD6,
+//     FIELD7,
+//     FIELD8,
+//     DATETIME,
+//     HOSTNAME
+// };
 
 extern const char* FIELD_NAMES[];
 
@@ -28,7 +31,7 @@ public:
     bool disconnect();
     bool isConnected();
     bool isIPStackInitialized();
-    void pushMessageToQueue(const char* message, const int messageSize);
+    // void pushMessageToQueue(const void* field, ...);
 
 private:
     std::unique_ptr<IPStack> ipStack;

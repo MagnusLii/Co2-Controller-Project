@@ -3,20 +3,23 @@
 #include <cstring>
 #include "connection_defines.c"
 #include "api_tasks.h"
+#include <cstdarg>
 
 #define BUFFER_SIZE 1024
 #define TIMEOUT_MS 5000
 
-const char* FIELD_NAMES[] = {
-    "field1",
-    "field2",
-    "field3",
-    "field4",
-    "field5",
-    "field6",
-    "field7",
-    "field8"
-};
+// const char* FIELD_NAMES[] = {
+//     "",
+//     "&field1=",
+//     "&field2=",
+//     "&field3=",
+//     "&field4=",
+//     "&field5=",
+//     "&field6=",
+//     "&field7=",
+//     "&field8=",
+//     "&datetime="
+// };
 
 
 ConnectionHandler::ConnectionHandler() = default;
@@ -67,7 +70,7 @@ std::vector<unsigned char> ConnectionHandler::receive(int length, int timeout_ms
     return buffer;
 }
 
-
+// Returns status of IPStack after disconnect attempt.
 bool ConnectionHandler::disconnect() {
     if (ipStack->isConnected()) {
         int result = ipStack->disconnect();
@@ -77,6 +80,7 @@ bool ConnectionHandler::disconnect() {
             return ipStack->isConnected();
         }
     }
+    return ipStack->isConnected();
 }
 
 
@@ -90,30 +94,45 @@ bool ConnectionHandler::isIPStackInitialized() {
 }
 
 
-// Not tested.
-void ConnnectionHandler::pushMessageToQueue(const char* field, ...) {
-    Message msg;
+// bool ConnectionHandler::updateFieldsMessage(const std::map<std::string, int> &fields) {
+//     std::string messageString;
 
-    std::string messageStart = "POST https://api.thingspeak.com/update\r\n"
-                                "api_key=" API_KEY "\r\n";
-                                
+//     for (const auto& [key, value] : fields) {
+//         messageString += FIELD_NAMES[key] + std::to_string(value);
+//     }
 
-    va_list args;
-    va_start(args, field);
 
-    while (field != nullptr) {
-        std::string fieldName = FIELD_NAMES[field];
-        std::string fieldValue = va_arg(args, const char*);
-        messageStart += fieldName + "=" + fieldValue + "\r\n";
-        field = va_arg(args, const char*);
-    }
+// }
 
-    messageStart += "talkback_key=" TALK_BACK_API_KEY;
 
-    va_end(args);
 
-    msg.data = std::vector<unsigned char>(messageStart.begin(), messageStart.end());
-    msg.length = messageStart.lenght();
+// // I spent too much time trying to make it work to delete it ;(
 
-    xQueueSend(sendQueue, &msg, QUEUE_TIMEOUT);
-}
+// // First argument is field value, second is field number from enum ApiFields, final argument must be nullptr to terminate the list.
+// // All fields except POST_AND_URL are optional.
+// // If you don't follow the rules this will crash and you will get no supper!
+// void ConnectionHandler::pushMessageToQueue(const void* field, ...) {
+
+//     Message msg;
+
+//     std::string messageString;                  
+
+//     va_list args;
+//     va_start(args, field);
+
+//     while (field != nullptr) {
+
+//     }
+
+//     va_end(args);
+
+//     msg.data = std::vector<unsigned char>(messageString.begin(), messageString.end());
+//     msg.length = messageString.length();
+
+//     DEBUG_printf("ConnectionHandler::pushMessageToQueue:\n\n----------------------------------\n%s\n", messageString.c_str());
+//     DEBUG_printf("ConnectionHandler::pushMessageToQueue: %d\n---------------------------------\n\n", msg.length);
+
+//     if (xQueueSend(sendQueue, &msg, QUEUE_TIMEOUT) != pdPASS) {
+//         DEBUG_printf("ConnectionHandler::pushMessageToQueue: Failed to send message to queue\n");
+//     }
+// }
