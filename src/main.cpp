@@ -1,6 +1,4 @@
 #include "FreeRTOS.h"
-#include "ModbusRegister.h"
-#include "ModbusRegister_32.h"
 #include "RegisterHandler.h"
 #include "PicoOsUart.h"
 #include "hardware/gpio.h"
@@ -28,26 +26,6 @@ extern "C" {
 shared_uart u{std::make_shared<Uart_instance>(1, 9600, UART_TX_PIN, UART_RX_PIN, 2)}; // 1 for testbox 2 for fullscale
 shared_modbus mbctrl{std::make_shared<ModbusCtrl>(u)};
 
-void read_task(void *pvParameters) {
-    auto reg = static_cast<ModbusRegister32 *>(pvParameters);
-    float f = 0;
-    while (true) {
-        f = reg->read_float();
-        vTaskDelay(2000);
-        std::cout << "Reading float: " << f << std::endl;
-    }
-}
-
-void read_task_16(void *pvParameters) {
-    auto reg = static_cast<ModbusRegister *>(pvParameters);
-    uint16_t u = 0;
-    while (true) {
-        u = reg->read();
-        vTaskDelay(2000);
-        std::cout << "Reading uint16: " << u << std::endl;
-    }
-}
-
 void read_old(void *pvParameters) {
     auto reg = static_cast<ReadRegister *>(pvParameters);
     while (true) {
@@ -62,16 +40,6 @@ void read_old(void *pvParameters) {
 int main() {
     stdio_init_all();
     std::cout << "Booting" << std::endl;
-
-    //std::shared_ptr<PicoOsUart> uart{std::make_shared<PicoOsUart>(1, 4, 5, 9600, 1)};
-    //std::shared_ptr<ModbusClient> mb_client{std::make_shared<ModbusClient>(uart)};
-
-    //ModbusRegister co(mb_client, 240, 0x101);
-    //ModbusRegister32 co2(mb_client, 240, 0, 2);
-
-
-    //ModbusRegister32 temp(mb_client, 241, 0x2, 2);
-    //ModbusRegister32 rh(mb_client, 241, 0x0, 2);
 
     ReadRegister co2(mbctrl, 240, 0x0, 2);
     ReadRegister temp(mbctrl, 241, 0x2, 2);

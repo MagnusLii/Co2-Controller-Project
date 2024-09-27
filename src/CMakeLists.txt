@@ -4,28 +4,25 @@ add_executable(${ProjectName}
         Fmutex.cpp
         RegisterHandler.cpp
 
-#        ipstack/IPStack.cpp
+        ipstack/IPStack.cpp
         ipstack/tls_common.c
         ipstack/picow_tls_client.c
 
         i2c/PicoI2C.cpp
 
-        uart/PicoOsUart.cpp
-
-        modbus/nanomodbus.c
-        modbus/ModbusRegister.cpp
-        modbus/ModbusRegister_32.cpp
-        modbus/ModbusClient.cpp
+#        uart/PicoOsUart.cpp
 
         display/framebuf.cpp
         display/mono_vlsb.cpp
 #        display/ssd1306.cpp
         display/ssd1306os.cpp
 
-        test/modbus_controller.cpp
-        test/modbus_register.cpp
-        test/uart_instance.cpp
-        test/dma_channel.cpp
+        modbus/modbus_controller.cpp
+        modbus/modbus_register.cpp
+
+        pico_hw/dma_channel.cpp
+        pico_hw/uart_instance.cpp
+#        pico_hw/i2c_instance.cpp
 )
 
 target_include_directories(${ProjectName} PRIVATE
@@ -37,6 +34,7 @@ target_include_directories(${ProjectName} PRIVATE
         ${INCLUDE_DIR}/ipstack
         ${INCLUDE_DIR}/modbus
         ${INCLUDE_DIR}/uart
+        ${INCLUDE_DIR}/pico_hw
 )
 
 target_compile_definitions(${ProjectName} PRIVATE
