@@ -22,6 +22,8 @@ public:
     int read(unsigned char *buffer, int len, int timeout);
     int write(unsigned char *buffer, int len, int timeout);
     int disconnect();
+    bool isConnected();
+    bool isInitialized();
     // lwip callback functions
     static err_t tcp_client_sent(void *arg, struct tcp_pcb *tpcb, u16_t len);
     static err_t tcp_client_poll(void *arg, struct tcp_pcb *tpcb) ;
@@ -40,6 +42,7 @@ private:
     uint16_t wr; // write index
     uint16_t rd; // read index
     bool connected;
+    bool initialized;
 };
 
 

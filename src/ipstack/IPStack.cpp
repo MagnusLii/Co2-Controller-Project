@@ -12,21 +12,33 @@
 #define DEBUG_printf printf
 #define DUMP_BYTES(A, B) {}
 
-
+// Modified to record initialization status -Magnus
 IPStack::IPStack(const char *ssid, const char *pw) : tcp_pcb{nullptr}, dropped{0}, count{0}, wr{0}, rd{0}, connected{false} {
     if (cyw43_arch_init()) {
         DEBUG_printf("failed to initialise\n");
-        return;
+        initialized = false;
     }
     cyw43_arch_enable_sta_mode();
 
     DEBUG_printf("Connecting to Wi-Fi...\n");
     if (cyw43_arch_wifi_connect_timeout_ms(ssid, pw, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
         DEBUG_printf("Failed to connect.\n");
+        initialized = false;
     } else {
         DEBUG_printf("Connected.\n");
+        initialized = true;
     }
 
+}
+
+// Added to ease connection verification -Magnus
+bool IPStack::isConnected() {
+    return connected;
+}
+
+// Added to ease initialization verification -Magnus
+bool IPStack::isInitialized() {
+    return initialized;
 }
 
 int IPStack::connect(uint32_t hostname, int port) {
