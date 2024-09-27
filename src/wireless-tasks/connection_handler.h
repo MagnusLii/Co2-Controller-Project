@@ -28,6 +28,7 @@ public:
     bool disconnect();
     bool isConnected();
     bool isIPStackInitialized();
+    void pushMessageToQueue(const char* message, const int messageSize);
 
 private:
     std::unique_ptr<IPStack> ipStack;

@@ -2,22 +2,25 @@
 #include "connection_handler.h"
 #include <cstring>
 #include "connection_defines.c"
+#include "api_tasks.h"
 
 #define BUFFER_SIZE 1024
 #define TIMEOUT_MS 5000
 
 const char* FIELD_NAMES[] = {
-    "field 1",
-    "field 2",
-    "field 3",
-    "field 4",
-    "field 5",
-    "field 6",
-    "field 7",
-    "field 8"
+    "field1",
+    "field2",
+    "field3",
+    "field4",
+    "field5",
+    "field6",
+    "field7",
+    "field8"
 };
 
+
 ConnectionHandler::ConnectionHandler() = default;
+
 
 void ConnectionHandler::initializeIPStack() {
     ipStack = std::make_unique<IPStack>(WIFI_SSID, WIFI_PASSWORD);
@@ -25,6 +28,7 @@ void ConnectionHandler::initializeIPStack() {
         ipStack.reset();
     }
 }
+
 
 bool ConnectionHandler::connect(const std::string& hostname, int port) {
     if (ipStack->isConnected()) {
@@ -36,6 +40,7 @@ bool ConnectionHandler::connect(const std::string& hostname, int port) {
     return status;
 }
 
+
 int ConnectionHandler::send(const std::vector<unsigned char>& data) {
     if (!ipStack->isConnected()) {
         return -1;  // Not connected
@@ -44,6 +49,7 @@ int ConnectionHandler::send(const std::vector<unsigned char>& data) {
     return ipStack->write(const_cast<unsigned char*>(data.data()), data.size(), TIMEOUT_MS);
 }
 
+
 std::vector<unsigned char> ConnectionHandler::receive(int length, int timeout_ms) {
     std::vector<unsigned char> buffer(length);
 
@@ -51,7 +57,6 @@ std::vector<unsigned char> ConnectionHandler::receive(int length, int timeout_ms
         return {};
     }
 
-    // Receive data
     int bytesRead = ipStack->read(buffer.data(), length, timeout_ms);
     if (bytesRead > 0) {
         buffer.resize(bytesRead);
@@ -61,6 +66,7 @@ std::vector<unsigned char> ConnectionHandler::receive(int length, int timeout_ms
 
     return buffer;
 }
+
 
 bool ConnectionHandler::disconnect() {
     if (ipStack->isConnected()) {
@@ -73,11 +79,41 @@ bool ConnectionHandler::disconnect() {
     }
 }
 
+
 bool ConnectionHandler::isConnected() {
     return ipStack->isConnected();
 }
 
-// This method now belongs to the class and is properly marked as const
+
 bool ConnectionHandler::isIPStackInitialized() {
     return ipStack->isInitialized();
+}
+
+
+// Not tested.
+void ConnnectionHandler::pushMessageToQueue(const char* field, ...) {
+    Message msg;
+
+    std::string messageStart = "POST https://api.thingspeak.com/update\r\n"
+                                "api_key=" API_KEY "\r\n";
+                                
+
+    va_list args;
+    va_start(args, field);
+
+    while (field != nullptr) {
+        std::string fieldName = FIELD_NAMES[field];
+        std::string fieldValue = va_arg(args, const char*);
+        messageStart += fieldName + "=" + fieldValue + "\r\n";
+        field = va_arg(args, const char*);
+    }
+
+    messageStart += "talkback_key=" TALK_BACK_API_KEY;
+
+    va_end(args);
+
+    msg.data = std::vector<unsigned char>(messageStart.begin(), messageStart.end());
+    msg.length = messageStart.lenght();
+
+    xQueueSend(sendQueue, &msg, QUEUE_TIMEOUT);
 }
