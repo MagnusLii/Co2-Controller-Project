@@ -63,21 +63,23 @@ int main() {
     stdio_init_all();
     std::cout << "Booting" << std::endl;
 
-    std::shared_ptr<PicoOsUart> uart{std::make_shared<PicoOsUart>(1, 4, 5, 9600, 1)};
-    std::shared_ptr<ModbusClient> mb_client{std::make_shared<ModbusClient>(uart)};
+    //std::shared_ptr<PicoOsUart> uart{std::make_shared<PicoOsUart>(1, 4, 5, 9600, 1)};
+    //std::shared_ptr<ModbusClient> mb_client{std::make_shared<ModbusClient>(uart)};
 
     //ModbusRegister co(mb_client, 240, 0x101);
-    ModbusRegister32 co2(mb_client, 240, 0, 2);
+    //ModbusRegister32 co2(mb_client, 240, 0, 2);
 
 
     //ModbusRegister32 temp(mb_client, 241, 0x2, 2);
     //ModbusRegister32 rh(mb_client, 241, 0x0, 2);
 
-    //ReadRegister co(mbctrl, 240, 0, 2);
+    ReadRegister co2(mbctrl, 240, 0x0, 2);
+    ReadRegister temp(mbctrl, 241, 0x2, 2);
 
-    //xTaskCreate(read_old, "read_task", 256, &co, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(read_old, "read_co2", 256, &co2, tskIDLE_PRIORITY + 1, nullptr);
+    xTaskCreate(read_old, "read_temp", 256, &temp, tskIDLE_PRIORITY + 1, nullptr);
 
-    xTaskCreate(read_task, "read_task", 256, (void *) &co2, tskIDLE_PRIORITY + 1, nullptr);
+    //xTaskCreate(read_task, "read_task", 256, (void *) &co2, tskIDLE_PRIORITY + 1, nullptr);
 
     //xTaskCreate(read_task_16, "read_task_16", 256, (void *) &co, tskIDLE_PRIORITY + 1, nullptr);
 
