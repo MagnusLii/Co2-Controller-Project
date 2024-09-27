@@ -6,8 +6,8 @@ add_executable(${ProjectName}
         blinker.cpp
         blinker.h
 
-#        ipstack/IPStack.cpp
-#        ipstack/IPStack.h
+        ipstack/IPStack.cpp
+        ipstack/IPStack.h
         ipstack/lwipopts.h
         ipstack/tls_common.c
         ipstack/picow_tls_client.c
@@ -30,31 +30,38 @@ add_executable(${ProjectName}
         display/framebuf.h
         display/mono_vlsb.cpp
         display/mono_vlsb.h
-#        display/ssd1306.cpp
-#        display/ssd1306.h
+        #        display/ssd1306.cpp
+        #        display/ssd1306.h
         display/ssd1306os.h
         display/ssd1306os.cpp
+
+        wireless-tasks/connection_handler.h
+        wireless-tasks/connection_handler.cpp
+
+        wireless-tasks/connection_defines.c
+
+        wireless-tasks/api_tasks.h
+        wireless-tasks/api_tasks.cpp
 )
 
 target_include_directories(${ProjectName} PRIVATE
-    ${CMAKE_CURRENT_LIST_DIR}
+        ${CMAKE_CURRENT_LIST_DIR}
         modbus
         uart
         i2c
         display
         ipstack
+        wireless-tasks
 )
 
 target_compile_definitions(${ProjectName} PRIVATE
-#        WIFI_SSID=\"${WIFI_SSID}\"
-#        WIFI_PASSWORD=\"${WIFI_PASSWORD}\"
-        WIFI_SSID=\"SmartIotMQTT\"
-        WIFI_PASSWORD=\"SmartIot\"
+        #WIFI_SSID=\"SmartIotMQTT\"
+        #WIFI_PASSWORD=\"SmartIot\"
         NO_SYS=0            # don't want NO_SYS (generally this would be in your lwipopts.h)
         PICO_CYW43_ARCH_DEFAULT_COUNTRY_CODE=CYW43_COUNTRY_FINLAND
 )
 
-target_link_libraries(${ProjectName} 
+target_link_libraries(${ProjectName}
         pico_stdlib
         hardware_i2c
         FreeRTOS-Kernel-Heap4
