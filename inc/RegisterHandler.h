@@ -2,16 +2,18 @@
 #ifndef REGISTERHANDLER_H_
 #define REGISTERHANDLER_H_
 
+#include "FreeRTOS.h"
+#include "modbus_register.h"
 #include "portmacro.h"
 #include "queue.h"
 #include "timers.h"
 #include "uart_instance.h"
-#include "modbus_register.h"
 
 #include <algorithm>
+#include <string>
 #include <vector>
 
-enum class ReadingType { CO2, TEMP, FAN_SPEED, FAN_COUNTER, PRESSURE, UNSET };
+enum class ReadingType { CO2, TEMPERATURE, REL_HUMIDITY, FAN_SPEED, FAN_COUNTER, PRESSURE, UNSET };
 
 struct Reading {
     ReadingType type;
@@ -28,13 +30,20 @@ class ReadRegisterHandler {
     void add_subscriber(QueueHandle_t subscriber);
     void remove_subscriber(QueueHandle_t subscriber);
     void send_reading();
+    ReadingType get_type();
 
   protected:
-    Reading reading{ ReadingType::UNSET, 0};
+    Reading reading{ReadingType::UNSET, {0}};
     TickType_t last_reading = 0;
+    std::string name = "";
+    TimerHandle_t send_timer = nullptr;
+
+    const uint16_t send_interval = 1000;
+    const uint16_t reading_interval = 1000;
 
     static void send_reading_timer_callback(TimerHandle_t xTimer) {
-        ReadRegisterHandler *handler = static_cast<ReadRegisterHandler *>(pvTimerGetTimerID(xTimer));
+        ReadRegisterHandler *handler =
+            static_cast<ReadRegisterHandler *>(pvTimerGetTimerID(xTimer));
         handler->send_reading();
     }
 
@@ -46,9 +55,9 @@ class ReadRegisterHandler {
 
 class ModbusReadHandler : public ReadRegisterHandler {
   public:
-    ModbusReadHandler(shared_modbus client, uint8_t server_address,
-                          uint16_t register_address, uint8_t nr_of_registers, bool holding_register,
-                          ReadingType type);
+    ModbusReadHandler(shared_modbus client, uint8_t server_address, uint16_t register_address,
+                      uint8_t nr_of_registers, bool holding_register, ReadingType type,
+                      std::string name);
 
   private:
     void get_reading() override;
@@ -60,7 +69,8 @@ class ModbusReadHandler : public ReadRegisterHandler {
         handler->mb_read();
     }
 
-    ReadRegister register;
+    shared_modbus controller;
+    ReadRegister reg;
 };
 
 // TODO:
