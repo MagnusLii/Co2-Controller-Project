@@ -42,16 +42,18 @@ void send_data_task(void *param) {
 
     for(;;) {
         if (xQueueReceive(sendQueue, &msgToSend, portMAX_DELAY) == pdPASS) {
-            DEBUG_printf("connhandler connect status: %d\n", connHandler->isConnected());
-            if (connHandler->isConnected()) {
-                int result = connHandler->send(msgToSend.data);
-
-                if (result >= 0) {
-                    DEBUG_printf("Message sent: %d bytes\n", result);
-                } else {
-                    DEBUG_printf("Failed to send message\n");
-                }
+            while (!connHandler->isConnected()) { // TODO: maybe this can be done in an independent task.
+                connHandler->connect(THINGSPEAK_HOSTNAME, THINGSPEAK_PORT);
             }
+
+            int result = connHandler->send(msgToSend.data);
+
+            if (result >= 0) {
+                DEBUG_printf("Message sent: %d bytes\n", result);
+            } else {
+                DEBUG_printf("Failed to send message\n");
+            }
+            
         }
     }
 }
@@ -70,13 +72,13 @@ void receive_data_task(void *param) {
         receivedData = connHandler->receive(MAX_MESSAGE_LENGHT, RECEIVE_TIMEOUT_MS); // TODO: this is blocking.
 
         if (!receivedData.empty()) {
+
+            while (!connHandler->isConnected()) { // TODO: maybe this can be done in an independent task.
+                connHandler->connect(THINGSPEAK_HOSTNAME, THINGSPEAK_PORT);
+            }
+
             DEBUG_printf("Received %lu bytes\n", receivedData.size());
             DEBUG_printf("Received data: %s\n", receivedData.data());
-
-            // Send received data to the receive queue in Message struct
-            // if (xQueueSend(receiveQueue, &receivedData, pdMS_TO_TICKS(QUEUE_TIMEOUT)) != pdPASS) {
-            //     DEBUG_printf("Failed to enqueue received data\n");
-            // }
         }
 
         vTaskDelay(pdMS_TO_TICKS(TIMEOUT_MS)); // Tested to not miss incoming data even with 10s timeout.
