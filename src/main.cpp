@@ -37,29 +37,37 @@ int main() {
     shared_modbus mbctrl{std::make_shared<ModbusCtrl>(uart_i)};
 
     SubscriptionManager manager;
-    TestSubscriber eeprom("EEPROM");
-    TestSubscriber display("Display");
-    //TestWriter writer("Controller");
 
     //init_modbus_handlers(manager, mbctrl);
 
-    ReadRegister co2_register{mbctrl, 240, 0x0, 2};
-    ReadRegister temp_register{mbctrl, 241, 0x2, 2};
+    //ReadRegister co2_register{mbctrl, 240, 0x0, 2};
+    //ReadRegister temp_register{mbctrl, 241, 0x2, 2};
 
-    ModbusReadHandler co2(mbctrl, &co2_register, ReadingType::CO2, "co2");
-    ModbusReadHandler temp(mbctrl, &temp_register, ReadingType::TEMPERATURE, "temp");
-    //auto rh = std::make_shared<ModbusReadHandler>(mbctrl, 241, 0x0, 2, true, ReadingType::REL_HUMIDITY, "rh");
-    //auto fcount = std::make_shared<ModbusReadHandler>(mbctrl, 1, 0x4, 2, true, ReadingType::FAN_COUNTER, "fcounter");
+    //ModbusReadHandler co2(mbctrl, &co2_register, ReadingType::CO2, "co2");
+    //ModbusReadHandler temp(mbctrl, &temp_register, ReadingType::TEMPERATURE, "temp");
 
-    manager.add_register_handler(ReadingType::CO2, &co2);
-    manager.add_register_handler(ReadingType::TEMPERATURE, &temp);
-    //manager.add_register_handler(ReadingType::REL_HUMIDITY, rh);
-    //manager.add_register_handler(ReadingType::FAN_COUNTER, fcount);
+    auto co2 = std::make_unique<ModbusReadHandler>(mbctrl, 240, 0x0, 2, true, ReadingType::CO2, "co2");
+    auto temp = std::make_unique<ModbusReadHandler>(mbctrl, 241, 0x2, 2, true, ReadingType::TEMPERATURE, "temp");
+    auto rh = std::make_unique<ModbusReadHandler>(mbctrl, 241, 0x0, 2, true, ReadingType::REL_HUMIDITY, "rh");
+    auto fcount = std::make_unique<ModbusReadHandler>(mbctrl, 1, 0x4, 1, true, ReadingType::FAN_COUNTER, "fcounter");
+    auto fspeed = std::make_unique<ModbusWriteHandler>(mbctrl, 1, 0x0, 1, WriteType::FAN_SPEED, "fspeed");
+
+    manager.add_register_handler(ReadingType::CO2, std::move(co2));
+    manager.add_register_handler(ReadingType::TEMPERATURE, std::move(temp));
+    manager.add_register_handler(ReadingType::REL_HUMIDITY, std::move(rh));
+    manager.add_register_handler(ReadingType::FAN_COUNTER, std::move(fcount));
+    manager.add_register_handler(WriteType::FAN_SPEED, std::move(fspeed));
+
+    TestSubscriber eeprom("CO2");
+    TestSubscriber display("TEMPERATURE");
+    TestSubscriber wifi("REL_HUMIDITY");
+    TestSubscriber fan_fan("FAN_COUNTER");
+    //TestWriter writer("Controller", manager);
 
     manager.subscribe_to_handler(ReadingType::CO2, eeprom.get_queue_handle());
-    manager.subscribe_to_handler(ReadingType::TEMPERATURE, eeprom.get_queue_handle());
-    manager.subscribe_to_handler(ReadingType::CO2, display.get_queue_handle());
     manager.subscribe_to_handler(ReadingType::TEMPERATURE, display.get_queue_handle());
+    manager.subscribe_to_handler(ReadingType::REL_HUMIDITY, wifi.get_queue_handle());
+    manager.subscribe_to_handler(ReadingType::FAN_COUNTER, fan_fan.get_queue_handle());
 
     vTaskStartScheduler();
 

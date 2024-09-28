@@ -1,11 +1,13 @@
 #include "SubscriptionManager.h"
 
+#include <sys/unistd.h>
+
 SubscriptionManager::SubscriptionManager() {}
 
 void SubscriptionManager::subscribe_to_handler(ReadingType type, QueueHandle_t receiver) {
     if (read_handlers.find(type) != read_handlers.end()) {
         read_handlers[type]->add_subscriber(receiver);
-        std::cout << "Subscriber added" << std::endl;
+        std::cout << "Subscriber added to " << read_handlers[type]->get_name() << std::endl;
     } else {
         std::cout << "Handler not found" << std::endl;
     }
@@ -28,14 +30,14 @@ void SubscriptionManager::subscribe_to_all(QueueHandle_t receiver) {
 }
 
 void SubscriptionManager::add_register_handler(ReadingType type,
-                                               ReadRegisterHandler* handler) {
-    read_handlers[type] = handler; // Overwrites if already exists
+                                               std::unique_ptr<ReadRegisterHandler> handler) {
+    read_handlers[type] = std::move(handler); // Overwrites if already exists
     std::cout << "Read handler added" << std::endl;
 }
 
 void SubscriptionManager::add_register_handler(WriteType type,
-                                               std::shared_ptr<WriteRegisterHandler> handler) {
-    write_handlers[type] = handler;
+                                               std::unique_ptr<WriteRegisterHandler> handler) {
+    write_handlers[type] = std::move(handler);
     std::cout << "Write handler added" << std::endl;
 }
 
@@ -47,15 +49,34 @@ TestSubscriber::TestSubscriber(std::string name) : name(name) {
 void TestSubscriber::receive() {
     for (;;) {
         Reading reading;
-        if (xQueueReceive(receiver, &reading, pdMS_TO_TICKS(100))) {
-            std::cout << name << ": " << reading.value.f32 << std::endl;
+        if (xQueueReceive(receiver, &reading, pdMS_TO_TICKS(500))) {
+            if (reading.type != ReadingType::UNSET) {
+                union {
+                    uint32_t u;
+                    float f;
+                    int32_t i;
+                    uint16_t s;
+                } value;
+                value.u = reading.value.u32;
+                value.f = reading.value.f32;
+                value.s = reading.value.u16;
+                value.i = reading.value.i32;
+            }
+            /*
+                if (reading.type == ReadingType::FAN_COUNTER) {
+                    std::cout << name << ": " << reading.value.u16 << std::endl;
+                } else {
+                    std::cout << name << ": " << reading.value.f32 << std::endl;
+                }
+            */
         }
     }
 }
 
 QueueHandle_t TestSubscriber::get_queue_handle() { return receiver; }
 
-TestWriter::TestWriter(std::string name) : name(name) {
+TestWriter::TestWriter(std::string name, SubscriptionManager& manager) : name(name) {
+    this->send_handle = manager.subscribe_to_handler(WriteType::FAN_SPEED);
     xTaskCreate(send_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 1, nullptr);
 }
 

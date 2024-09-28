@@ -24,6 +24,9 @@ void ReadRegisterHandler::send_reading() {
 
 ReadingType ReadRegisterHandler::get_type() { return reading.type; }
 
+std::string ReadRegisterHandler::get_name() { return name; }
+
+/* Test
 ModbusReadHandler::ModbusReadHandler(shared_modbus mbctrl, ReadRegister* register_, ReadingType type, std::string name) : reg(*register_) {
     this->controller = mbctrl;
     this->reading.type = type;
@@ -33,7 +36,7 @@ ModbusReadHandler::ModbusReadHandler(shared_modbus mbctrl, ReadRegister* registe
     this->send_timer = xTimerCreate(name.c_str(), pdMS_TO_TICKS(send_interval), pdTRUE, this,
                                     send_reading_timer_callback);
 }
-/*
+*/
 ModbusReadHandler::ModbusReadHandler(shared_modbus client, uint8_t device_address,
                                      uint16_t register_address, uint8_t nr_of_registers,
                                      bool holding_register, ReadingType type, std::string name)
@@ -42,18 +45,17 @@ ModbusReadHandler::ModbusReadHandler(shared_modbus client, uint8_t device_addres
     this->reading.type = type;
     this->name = name;
 
-    xTaskCreate(mb_read_task, name.c_str(), 512, this, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(mb_read_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 1, NULL);
     this->send_timer = xTimerCreate(name.c_str(), pdMS_TO_TICKS(send_interval), pdTRUE, this,
                                     send_reading_timer_callback);
 }
-*/
 void ModbusReadHandler::get_reading() {
     reading.value.f32 = reg.get_float();
     std::cout << reading.value.f32 << std::endl;
 }
 
 void ModbusReadHandler::mb_read() {
-    if (send_timer != nullptr) xTimerStart(send_timer, 0);
+    if (send_timer != nullptr) xTimerStart(send_timer, pdMS_TO_TICKS(10000));
     for (;;) {
         // TickType_t start = xTaskGetTickCount();
         while (controller->isbusy())
@@ -68,9 +70,10 @@ TaskHandle_t WriteRegisterHandler::get_write_task_handle() { return write_task_h
 
 ModbusWriteHandler::ModbusWriteHandler(shared_modbus client, uint8_t device_address,
                                        uint16_t register_address, uint8_t nr_of_registers,
-                                       ReadingType type, std::string name)
+                                       WriteType type, std::string name)
     : reg(client, device_address, register_address, nr_of_registers) {
-    this->reading.type = type;
+    this->controller = client;
+    this->type = type;
     this->name = name;
 
     xTaskCreate(mb_write_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 1, &write_task_handle);

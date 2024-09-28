@@ -23,7 +23,7 @@ struct Reading {
         uint32_t u32;
         float f32;
         int32_t i32;
-        //int16_t i16;
+        uint16_t u16;
     } value;
 };
 
@@ -34,6 +34,7 @@ class ReadRegisterHandler {
     void remove_subscriber(QueueHandle_t subscriber);
     void send_reading();
     ReadingType get_type();
+    std::string get_name();
 
   protected:
     Reading reading{ReadingType::UNSET, {0}};
@@ -41,7 +42,7 @@ class ReadRegisterHandler {
     std::string name = "";
     TimerHandle_t send_timer = nullptr;
 
-    const uint16_t send_interval = 1000;
+    const uint16_t send_interval = 5000;
     const uint16_t reading_interval = 1000;
 
     static void send_reading_timer_callback(TimerHandle_t xTimer) {
@@ -58,12 +59,12 @@ class ReadRegisterHandler {
 
 class ModbusReadHandler : public ReadRegisterHandler {
   public:
-    ModbusReadHandler(shared_modbus mbctrl, ReadRegister* register_, ReadingType type, std::string name);
-  /*
+    // ModbusReadHandler(shared_modbus mbctrl, ReadRegister* register_, ReadingType type,
+    // std::string name);
     ModbusReadHandler(shared_modbus client, uint8_t server_address, uint16_t register_address,
                       uint8_t nr_of_registers, bool holding_register, ReadingType type,
                       std::string name);
-  */
+
   private:
     void get_reading() override;
 
@@ -75,7 +76,7 @@ class ModbusReadHandler : public ReadRegisterHandler {
     }
 
     shared_modbus controller;
-    ReadRegister& reg;
+    ReadRegister reg;
 };
 
 // TODO:
@@ -96,7 +97,7 @@ class WriteRegisterHandler {
 
   protected:
     TaskHandle_t write_task_handle = nullptr;
-    Reading reading{ReadingType::UNSET, {0}};
+    WriteType type = WriteType::UNSET;
     std::string name = "";
 
   private:
@@ -106,7 +107,7 @@ class WriteRegisterHandler {
 class ModbusWriteHandler : public WriteRegisterHandler {
   public:
     ModbusWriteHandler(shared_modbus client, uint8_t server_address, uint16_t register_address,
-                       uint8_t nr_of_registers, ReadingType type, std::string name);
+                       uint8_t nr_of_registers, WriteType type, std::string name);
 
   private:
     void mb_write();
