@@ -12,7 +12,10 @@ void SubscriptionManager::subscribe_to_handler(ReadingType type, QueueHandle_t r
 }
 
 void SubscriptionManager::subscribe_to_all(QueueHandle_t receiver) {
-    // TODO
+    std::cout << "All subscribers added" << std::endl;
+    for (auto &handler : handlers) {
+        handler.second->add_subscriber(receiver);
+    }
 }
 
 void SubscriptionManager::add_register_handler(ReadingType type,
