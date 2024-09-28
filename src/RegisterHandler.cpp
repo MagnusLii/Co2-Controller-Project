@@ -30,6 +30,7 @@ ModbusReadHandler::ModbusReadHandler(shared_modbus client, uint8_t device_addres
                                      uint16_t register_address, uint8_t nr_of_registers,
                                      bool holding_register, ReadingType type, std::string name)
     : reg(client, device_address, register_address, nr_of_registers, holding_register) {
+    this->controller = client; // <- I wasted so much time because of this damn thing
     this->reading.type = type;
     this->name = name;
 
