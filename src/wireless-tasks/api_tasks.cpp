@@ -23,6 +23,9 @@
 QueueHandle_t sendQueue;
 QueueHandle_t receiveQueue;
 
+// Taskhandles for notification
+TaskHandle_t reconnectHandle = NULL;
+
 
 // A structure to store both the message to send and its length.
 struct Message {
@@ -41,9 +44,11 @@ void send_data_task(void *param) {
     }
 
     for(;;) {
+
         if (xQueueReceive(sendQueue, &msgToSend, portMAX_DELAY) == pdPASS) {
-            while (!connHandler->isConnected()) { // TODO: maybe this can be done in an independent task.
-                connHandler->connect(THINGSPEAK_HOSTNAME, THINGSPEAK_PORT);
+
+            if (!connHandler->isConnected()) {
+                xTaskNotifyGive(reconnectHandle);
             }
 
             int result = connHandler->send(msgToSend.data);
@@ -53,7 +58,7 @@ void send_data_task(void *param) {
             } else {
                 DEBUG_printf("Failed to send message\n");
             }
-            
+
         }
     }
 }
@@ -69,14 +74,14 @@ void receive_data_task(void *param) {
     }
 
     for(;;) {
+
+        if (!connHandler->isConnected()) {
+            xTaskNotifyGive(reconnectHandle);
+        }
+
         receivedData = connHandler->receive(MAX_MESSAGE_LENGHT, RECEIVE_TIMEOUT_MS); // TODO: this is blocking.
 
         if (!receivedData.empty()) {
-
-            while (!connHandler->isConnected()) { // TODO: maybe this can be done in an independent task.
-                connHandler->connect(THINGSPEAK_HOSTNAME, THINGSPEAK_PORT);
-            }
-
             DEBUG_printf("Received %lu bytes\n", receivedData.size());
             DEBUG_printf("Received data: %s\n", receivedData.data());
         }
@@ -86,7 +91,8 @@ void receive_data_task(void *param) {
 }
 
 
-void initialize_IPStack_task(void *param) {
+// This task must be called, and should preferably be one of the first tasks to be called on startup.
+void fully_initialize_connhandler_task(void *param) {
     ConnectionHandler *connHandler = static_cast<ConnectionHandler *>(param);
 
     while (!connHandler->isIPStackInitialized()) {
@@ -98,7 +104,23 @@ void initialize_IPStack_task(void *param) {
         vTaskDelay(pdMS_TO_TICKS(ONE_SECOND));
     }
 
+    // Setup reconnect task.
+    xTaskCreate(reconnect_task, "Reconnect task", 512, connHandler, tskIDLE_PRIORITY + 1, &reconnectHandle); // TODO: Change priority.
+
     vTaskDelete(NULL);
+}
+
+
+void reconnect_task(void *param) {
+    ConnectionHandler *connHandler = static_cast<ConnectionHandler *>(param);
+
+    for (;;){
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        while (!connHandler->isConnected()) {
+            connHandler->connect(THINGSPEAK_HOSTNAME, THINGSPEAK_PORT);
+            // TODO: Maybe add a IPStack reinitialization here.
+        }
+    }
 }
 
 // void generate_test_data_task(void *param) {

@@ -36,7 +36,7 @@ int main() {
     xTaskCreate(send_data_task, "send", 1024, (void *) &connHandler, tskIDLE_PRIORITY + 1, nullptr);
     xTaskCreate(receive_data_task, "receive", 1024, (void *) &connHandler, tskIDLE_PRIORITY + 1, nullptr);
     // xTaskCreate(generate_test_data_task, "generate", 1024, (void*) &connHandler, tskIDLE_PRIORITY + 1, nullptr);
-    xTaskCreate(initialize_IPStack_task, "init", 1024, (void *) &connHandler, tskIDLE_PRIORITY + 2, nullptr);
+    xTaskCreate(fully_initialize_connhandler_task, "init", 1024, (void *) &connHandler, tskIDLE_PRIORITY + 2, nullptr);
 
     // xTaskCreate(test_task, "test", 4096, (void*) &connHandler, tskIDLE_PRIORITY + 1, nullptr);
     vTaskStartScheduler();
