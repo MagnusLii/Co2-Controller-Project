@@ -28,7 +28,7 @@ void SubscriptionManager::subscribe_to_all(QueueHandle_t receiver) {
 }
 
 void SubscriptionManager::add_register_handler(ReadingType type,
-                                               std::shared_ptr<ReadRegisterHandler> handler) {
+                                               ReadRegisterHandler* handler) {
     read_handlers[type] = handler; // Overwrites if already exists
     std::cout << "Read handler added" << std::endl;
 }

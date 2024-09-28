@@ -16,11 +16,11 @@ class SubscriptionManager {
     void subscribe_to_handler(ReadingType type, QueueHandle_t receiver);
     TaskHandle_t subscribe_to_handler(WriteType type);
     void subscribe_to_all(QueueHandle_t receiver);
-    void add_register_handler(ReadingType type, std::shared_ptr<ReadRegisterHandler>);
-    void add_register_handler(WriteType type, std::shared_ptr<WriteRegisterHandler>);
+    void add_register_handler(ReadingType type, ReadRegisterHandler* handler);
+    void add_register_handler(WriteType type, std::shared_ptr<WriteRegisterHandler> handler);
 
   private:
-    std::map<ReadingType, std::shared_ptr<ReadRegisterHandler>> read_handlers;
+    std::map<ReadingType, ReadRegisterHandler*> read_handlers;
     std::map<WriteType, std::shared_ptr<WriteRegisterHandler>> write_handlers;
 };
 

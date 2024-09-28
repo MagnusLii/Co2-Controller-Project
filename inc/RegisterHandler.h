@@ -58,7 +58,7 @@ class ReadRegisterHandler {
 
 class ModbusReadHandler : public ReadRegisterHandler {
   public:
-    ModbusReadHandler(ReadRegister& register_, ReadingType type, std::string name);
+    ModbusReadHandler(shared_modbus mbctrl, ReadRegister* register_, ReadingType type, std::string name);
   /*
     ModbusReadHandler(shared_modbus client, uint8_t server_address, uint16_t register_address,
                       uint8_t nr_of_registers, bool holding_register, ReadingType type,

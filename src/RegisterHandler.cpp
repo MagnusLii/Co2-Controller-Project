@@ -24,11 +24,12 @@ void ReadRegisterHandler::send_reading() {
 
 ReadingType ReadRegisterHandler::get_type() { return reading.type; }
 
-ModbusReadHandler::ModbusReadHandler(ReadRegister& register_, ReadingType type, std::string name) : reg(register_) {
+ModbusReadHandler::ModbusReadHandler(shared_modbus mbctrl, ReadRegister* register_, ReadingType type, std::string name) : reg(*register_) {
+    this->controller = mbctrl;
     this->reading.type = type;
     this->name = name;
 
-    xTaskCreate(mb_read_task, name.c_str(), 512, this, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(mb_read_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 1, NULL);
     this->send_timer = xTimerCreate(name.c_str(), pdMS_TO_TICKS(send_interval), pdTRUE, this,
                                     send_reading_timer_callback);
 }
@@ -47,7 +48,7 @@ ModbusReadHandler::ModbusReadHandler(shared_modbus client, uint8_t device_addres
 */
 void ModbusReadHandler::get_reading() {
     reading.value.f32 = reg.get_float();
-    //std::cout << reading.value.f32 << std::endl;
+    std::cout << reading.value.f32 << std::endl;
 }
 
 void ModbusReadHandler::mb_read() {

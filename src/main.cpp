@@ -46,13 +46,13 @@ int main() {
     ReadRegister co2_register{mbctrl, 240, 0x0, 2};
     ReadRegister temp_register{mbctrl, 241, 0x2, 2};
 
-    auto co2 = std::make_shared<ModbusReadHandler>(co2_register, ReadingType::CO2, "co2");
-    auto temp = std::make_shared<ModbusReadHandler>(temp_register, ReadingType::TEMPERATURE, "temp");
+    ModbusReadHandler co2(mbctrl, &co2_register, ReadingType::CO2, "co2");
+    ModbusReadHandler temp(mbctrl, &temp_register, ReadingType::TEMPERATURE, "temp");
     //auto rh = std::make_shared<ModbusReadHandler>(mbctrl, 241, 0x0, 2, true, ReadingType::REL_HUMIDITY, "rh");
     //auto fcount = std::make_shared<ModbusReadHandler>(mbctrl, 1, 0x4, 2, true, ReadingType::FAN_COUNTER, "fcounter");
 
-    manager.add_register_handler(ReadingType::CO2, co2);
-    manager.add_register_handler(ReadingType::TEMPERATURE, temp);
+    manager.add_register_handler(ReadingType::CO2, &co2);
+    manager.add_register_handler(ReadingType::TEMPERATURE, &temp);
     //manager.add_register_handler(ReadingType::REL_HUMIDITY, rh);
     //manager.add_register_handler(ReadingType::FAN_COUNTER, fcount);
 
