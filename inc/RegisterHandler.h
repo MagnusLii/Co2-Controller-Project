@@ -13,7 +13,9 @@
 #include <string>
 #include <vector>
 
-enum class ReadingType { CO2, TEMPERATURE, REL_HUMIDITY, FAN_SPEED, FAN_COUNTER, PRESSURE, UNSET };
+enum class ReadingType { CO2, TEMPERATURE, REL_HUMIDITY, FAN_COUNTER, PRESSURE, UNSET };
+
+enum class WriteType { FAN_SPEED, UNSET };
 
 struct Reading {
     ReadingType type;
@@ -21,6 +23,7 @@ struct Reading {
         uint32_t u32;
         float f32;
         int32_t i32;
+        //int16_t i16;
     } value;
 };
 
@@ -55,10 +58,12 @@ class ReadRegisterHandler {
 
 class ModbusReadHandler : public ReadRegisterHandler {
   public:
+    ModbusReadHandler(shared_modbus mbctrl, ReadRegister* register_, ReadingType type, std::string name);
+  /*
     ModbusReadHandler(shared_modbus client, uint8_t server_address, uint16_t register_address,
                       uint8_t nr_of_registers, bool holding_register, ReadingType type,
                       std::string name);
-
+  */
   private:
     void get_reading() override;
 
@@ -70,7 +75,7 @@ class ModbusReadHandler : public ReadRegisterHandler {
     }
 
     shared_modbus controller;
-    ReadRegister reg;
+    ReadRegister& reg;
 };
 
 // TODO:
@@ -82,6 +87,37 @@ class I2CReadHandler : public ReadRegisterHandler {
     void get_reading() override;
 
     // I2C Reg
+};
+
+class WriteRegisterHandler {
+  public:
+    virtual ~WriteRegisterHandler() = default;
+    TaskHandle_t get_write_task_handle();
+
+  protected:
+    TaskHandle_t write_task_handle = nullptr;
+    Reading reading{ReadingType::UNSET, {0}};
+    std::string name = "";
+
+  private:
+    std::vector<QueueHandle_t> subscribers;
+};
+
+class ModbusWriteHandler : public WriteRegisterHandler {
+  public:
+    ModbusWriteHandler(shared_modbus client, uint8_t server_address, uint16_t register_address,
+                       uint8_t nr_of_registers, ReadingType type, std::string name);
+
+  private:
+    void mb_write();
+
+    static void mb_write_task(void *pvParameters) {
+        ModbusWriteHandler *handler = static_cast<ModbusWriteHandler *>(pvParameters);
+        handler->mb_write();
+    }
+
+    shared_modbus controller;
+    WriteRegister reg;
 };
 
 #endif /* REGISTERHANDLER_H_ */
