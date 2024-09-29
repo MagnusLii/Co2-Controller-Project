@@ -3,7 +3,7 @@
 
 
 ### Individual macros
-Macros for wireless communication are defined in `src\wireless-tasks\connection_defines.c`<br>
+Macros for wireless communication are defined in `src\wireless-tasks\connection_defines.h`<br>
 The file needs to be created manually and should contain the following macros:<br>
 ```c
 #define API_KEY "XXX"
