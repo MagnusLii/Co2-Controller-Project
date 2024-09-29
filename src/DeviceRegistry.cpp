@@ -1,19 +1,19 @@
-#include "SubscriptionManager.h"
+#include "DeviceRegistry.h"
 
-#include <sys/unistd.h>
 
-SubscriptionManager::SubscriptionManager() {}
 
-void SubscriptionManager::subscribe_to_handler(ReadingType type, QueueHandle_t receiver) {
+DeviceRegistry::DeviceRegistry() {}
+/*
+void DeviceRegistry::subscribe_to_handler(ReadingType type, QueueHandle_t receiver) {
     if (read_handlers.find(type) != read_handlers.end()) {
-        read_handlers[type]->add_subscriber(receiver);
+
         std::cout << "Subscriber added to " << read_handlers[type]->get_name() << std::endl;
     } else {
         std::cout << "Handler not found" << std::endl;
     }
 }
 
-TaskHandle_t SubscriptionManager::subscribe_to_handler(WriteType type) {
+TaskHandle_t DeviceRegistry::subscribe_to_handler(WriteType type) {
     if (write_handlers.find(type) != write_handlers.end()) {
         return write_handlers[type]->get_write_task_handle();
     } else {
@@ -22,22 +22,28 @@ TaskHandle_t SubscriptionManager::subscribe_to_handler(WriteType type) {
     }
 }
 
-void SubscriptionManager::subscribe_to_all(QueueHandle_t receiver) {
+void DeviceRegistry::subscribe_to_all(QueueHandle_t receiver) {
     std::cout << "All subscribers added" << std::endl;
     for (auto &handler : read_handlers) {
         handler.second->add_subscriber(receiver);
     }
 }
-
-void SubscriptionManager::add_register_handler(ReadingType type,
-                                               std::unique_ptr<ReadRegisterHandler> handler) {
-    read_handlers[type] = std::move(handler); // Overwrites if already exists
+*/
+void DeviceRegistry::add_register_handler(ReadingType type,
+                                               std::shared_ptr<ReadRegisterHandler> handler) {
+    for (auto const& handler_pair : read_handlers) {
+        if (handler_pair.first == type) {
+            std::cout << "Handler already exists" << std::endl;
+            return;
+        }
+    }
+    read_handlers.push_back({type, handler}); // Appends
     std::cout << "Read handler added" << std::endl;
 }
 
-void SubscriptionManager::add_register_handler(WriteType type,
-                                               std::unique_ptr<WriteRegisterHandler> handler) {
-    write_handlers[type] = std::move(handler);
+void DeviceRegistry::add_register_handler(WriteType type,
+                                               std::shared_ptr<WriteRegisterHandler> handler) {
+    write_handlers[type] = handler;
     std::cout << "Write handler added" << std::endl;
 }
 
@@ -75,18 +81,15 @@ void TestSubscriber::receive() {
 
 QueueHandle_t TestSubscriber::get_queue_handle() { return receiver; }
 
-TestWriter::TestWriter(std::string name, SubscriptionManager& manager) : name(name) {
-    this->send_handle = manager.subscribe_to_handler(WriteType::FAN_SPEED);
-    xTaskCreate(send_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 1, nullptr);
-}
+TestWriter::TestWriter(std::string name, QueueHandle_t relay_queue) : name(name), relay_queue(relay_queue) {}
 
-void TestWriter::add_send_handle(TaskHandle_t handle) { send_handle = handle; }
+//void TestWriter::add_send_handle(TaskHandle_t handle) { send_handle = handle; }
 
 void TestWriter::send() {
-    uint32_t value = 500;
+    ControlMessage msg{ WriteType::FAN_SPEED, 500};
     for (;;) {
-        xTaskNotify(send_handle, value, eSetValueWithOverwrite);
-        value = 0;
+        xQueueSend(relay_queue, &msg, 0);
+        msg.value = 0;
         vTaskDelay(pdMS_TO_TICKS(10000));
     }
 }

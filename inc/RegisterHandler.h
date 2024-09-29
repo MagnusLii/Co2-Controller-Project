@@ -35,14 +35,16 @@ class ReadRegisterHandler {
     void send_reading();
     ReadingType get_type();
     std::string get_name();
+    TimerHandle_t get_timer_handle();
+    virtual Reading get_reading() = 0;
 
   protected:
     Reading reading{ReadingType::UNSET, {0}};
     TickType_t last_reading = 0;
     std::string name = "";
-    TimerHandle_t send_timer = nullptr;
+    TimerHandle_t read_timer = nullptr;
 
-    const uint16_t send_interval = 5000;
+    //const uint16_t send_interval = 5000;
     const uint16_t reading_interval = 1000;
 
     static void send_reading_timer_callback(TimerHandle_t xTimer) {
@@ -50,11 +52,11 @@ class ReadRegisterHandler {
             static_cast<ReadRegisterHandler *>(pvTimerGetTimerID(xTimer));
         handler->send_reading();
     }
+    /*
+      private:
 
-  private:
-    virtual void get_reading() = 0;
-
-    std::vector<QueueHandle_t> subscribers;
+        std::vector<QueueHandle_t> subscribers;
+        */
 };
 
 class ModbusReadHandler : public ReadRegisterHandler {
@@ -64,15 +66,22 @@ class ModbusReadHandler : public ReadRegisterHandler {
     ModbusReadHandler(shared_modbus client, uint8_t server_address, uint16_t register_address,
                       uint8_t nr_of_registers, bool holding_register, ReadingType type,
                       std::string name);
+    Reading get_reading() override;
 
   private:
-    void get_reading() override;
-
-    void mb_read();
-
+    // void mb_read();
+    /*
     static void mb_read_task(void *pvParameters) {
         ModbusReadHandler *handler = static_cast<ModbusReadHandler *>(pvParameters);
         handler->mb_read();
+    }
+    */
+    void read_register();
+
+    static void read_register_callback(TimerHandle_t xTimer) {
+        ModbusReadHandler *handler =
+            static_cast<ModbusReadHandler *>(pvTimerGetTimerID(xTimer));
+        handler->read_register();
     }
 
     shared_modbus controller;
@@ -85,7 +94,7 @@ class I2CReadHandler : public ReadRegisterHandler {
     I2CReadHandler() = default;
 
   private:
-    void get_reading() override;
+    Reading get_reading() override;
 
     // I2C Reg
 };
@@ -94,6 +103,8 @@ class WriteRegisterHandler {
   public:
     virtual ~WriteRegisterHandler() = default;
     TaskHandle_t get_write_task_handle();
+    virtual void write_to_reg(uint32_t value) = 0;
+    std::string get_name();
 
   protected:
     TaskHandle_t write_task_handle = nullptr;
@@ -109,14 +120,17 @@ class ModbusWriteHandler : public WriteRegisterHandler {
     ModbusWriteHandler(shared_modbus client, uint8_t server_address, uint16_t register_address,
                        uint8_t nr_of_registers, WriteType type, std::string name);
 
-  private:
-    void mb_write();
+    void write_to_reg(uint32_t value);
 
+  private:
+    // void mb_write();
+
+    /*
     static void mb_write_task(void *pvParameters) {
         ModbusWriteHandler *handler = static_cast<ModbusWriteHandler *>(pvParameters);
         handler->mb_write();
     }
-
+    */
     shared_modbus controller;
     WriteRegister reg;
 };

@@ -3,7 +3,7 @@ add_executable(${ProjectName}
         critical_section.cpp
         Fmutex.cpp
         RegisterHandler.cpp
-        SubscriptionManager.cpp
+        DeviceRegistry.cpp
 
         ipstack/IPStack.cpp
         ipstack/tls_common.c
