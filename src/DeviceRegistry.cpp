@@ -86,5 +86,5 @@ void TestWriter::send() {
 }
 
 void trap(Reading reading) {
-    std::cout << reading.value.u16 << std::endl;
+    //std::cout << reading.value.u16 << std::endl;
 }

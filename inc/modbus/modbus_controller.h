@@ -1,5 +1,6 @@
 #pragma once
 
+#include "FreeRTOS.h"
 #include <memory>
 #include "pico/time.h"
 #include "uart_instance.h"

@@ -1,11 +1,13 @@
+#include "modbus_controller.h"
+#include "hardware/dma.h"
+#include "hardware/timer.h"
+#include "modbus_register.h"
 #include "pico/stdlib.h"
 #include "pico/time.h"
-#include "hardware/timer.h"
-#include "hardware/dma.h"
-#include "modbus_controller.h"
-#include "modbus_register.h"
+#include "portmacro.h"
 
-
+#include <projdefs.h>
+#include <task.h>
 
 static ModbusCtrl *point;
 static int rx_chan;
@@ -48,7 +50,7 @@ static inline uint64_t get_char_delay(uint baud) {
 void ModbusCtrl::start(MODBUSRegister *who, uint8_t rxlen, uint32_t timeout_ms) {
     // if busy and not enough delay for next transfer wait
     uint64_t delay = get_char_delay(uart_baud);
-    while(busy || ((time_us_64() - ctrl_time) < delay)) tight_loop_contents();
+    while(busy || ((time_us_64() - ctrl_time) < delay)) vTaskDelay(pdMS_TO_TICKS(2));
     busy = true;
     current_user = who;
     rx_channel.start(who->rxbuf_address(), rxlen);
