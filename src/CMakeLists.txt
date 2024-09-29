@@ -38,10 +38,12 @@ add_executable(${ProjectName}
         wireless-tasks/connection_handler.h
         wireless-tasks/connection_handler.cpp
 
-        wireless-tasks/connection_defines.c
+        wireless-tasks/connection_defines.h
 
         wireless-tasks/api_tasks.h
         wireless-tasks/api_tasks.cpp
+
+        task_defines.h
 )
 
 target_include_directories(${ProjectName} PRIVATE
