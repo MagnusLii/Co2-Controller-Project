@@ -1,39 +1,51 @@
 #include "IPStack.h"
 #include "connection_handler.h"
 #include <cstring>
-#include "connection_defines.c"
+#include "connection_defines.h"
 #include "api_tasks.h"
 #include <cstdarg>
 
 #define BUFFER_SIZE 1024
 #define TIMEOUT_MS 5000
 
-// const char* FIELD_NAMES[] = {
-//     "",
-//     "&field1=",
-//     "&field2=",
-//     "&field3=",
-//     "&field4=",
-//     "&field5=",
-//     "&field6=",
-//     "&field7=",
-//     "&field8=",
-//     "&datetime="
-// };
+const char* FIELD_NAMES[] = {
+    "&field1=",
+    "&field2=",
+    "&field3=",
+    "&field4=",
+    "&field5=",
+    "&field6=",
+    "&field7=",
+    "&field8="
+};
 
 
 ConnectionHandler::ConnectionHandler() = default;
 
 
-void ConnectionHandler::initializeIPStack() {
-    bool initialized = false;
-    while (!initialized) {
+// void ConnectionHandler::initializeIPStack() {
+//     bool initialized = false;
+//     while (!initialized) {
+//         ipStack = std::make_unique<IPStack>(WIFI_SSID, WIFI_PASSWORD);
+//         if (!(initialized = ipStack->isInitialized())) {
+//             DEBUG_printf("Deinit IPStack\n");
+//             ipStack->disconnect();
+//             cyw43_arch_deinit();
+//         }
+//     }
+// }
+
+void ConnectionHandler::initializeIPStack(){
+    ipStack = std::make_unique<IPStack>(WIFI_SSID, WIFI_PASSWORD);
+
+    // TODO: nothing seems to be working, cyw43_arch_init() creates two tasks, which aren't killed by cyw43_arch_deinit(), causing the system to lock up.
+    // No idea how to reinit a failed IPStack.
+    while (!ipStack->isInitialized()) {
+        DEBUG_printf("ConnectionHandler::initializeIPStack(): IPStack not initialized\nReboot the system\n");
+        cyw43_arch_deinit();
+        vTaskDelay(1);
+        ipStack.reset();
         ipStack = std::make_unique<IPStack>(WIFI_SSID, WIFI_PASSWORD);
-        
-        if (!(initialized = ipStack->isInitialized())) {
-            ipStack->disconnect();
-            cyw43_arch_deinit();
-        }
     }
 }
 
@@ -44,7 +56,7 @@ bool ConnectionHandler::connect(const std::string& hostname, int port) {
     }
 
     int status = ipStack->connect(hostname.c_str(), port);
-    printf("Connection status: %d\n", status);
+    DEBUG_printf("ConnectionHandler::connect(): Connection status: %d\n", status);
     return status;
 }
 
@@ -90,51 +102,38 @@ bool ConnectionHandler::disconnect() {
 
 
 bool ConnectionHandler::isConnected() {
+    DEBUG_printf("ConnectionHandler::isConnected: %d\n", ipStack->isConnected());
     return ipStack->isConnected();
 }
 
 
 bool ConnectionHandler::isIPStackInitialized() {
+    DEBUG_printf("ConnectionHandler::isIPStackInitialized: %d\n", ipStack->isInitialized());
     return ipStack->isInitialized();
 }
 
 
-// bool ConnectionHandler::updateFieldsMessage(const std::map<std::string, int> &fields) {
-//     std::string messageString;
+// Returns len of the message.
+int ConnectionHandler::create_minimal_push_message(std::vector<unsigned char>& messageContainer, const float values[]) {
+    messageContainer.clear();
+    
+    std::string message;
+    message += "GET /update?api_key=";
+    message += API_KEY;
 
-//     for (const auto& [key, value] : fields) {
-//         messageString += FIELD_NAMES[key] + std::to_string(value);
-//     }
+    for (int i = 0; i <= FIELD8; i++) {
+        message += FIELD_NAMES[i];
+        char buffer[10];
+        snprintf(buffer, sizeof(buffer), "%.2f", values[i]);
+        message += buffer;
+    }
 
+    message += " HTTP/1.1\r\n";
+    message += "Host: ";
+    message += THINGSPEAK_HOSTNAME;
+    message += "\r\n";
+    message += "\r\n";
 
-// }
-
-
-// // First argument is field value, second is field number from enum ApiFields, final argument must be nullptr to terminate the list.
-// // All fields except POST_AND_URL are optional.
-// // If you don't follow the rules this will crash and you will get no supper!
-// void ConnectionHandler::pushMessageToQueue(const void* field, ...) {
-
-//     Message msg;
-
-//     std::string messageString;                  
-
-//     va_list args;
-//     va_start(args, field);
-
-//     while (field != nullptr) {
-
-//     }
-
-//     va_end(args);
-
-//     msg.data = std::vector<unsigned char>(messageString.begin(), messageString.end());
-//     msg.length = messageString.length();
-
-//     DEBUG_printf("ConnectionHandler::pushMessageToQueue:\n\n----------------------------------\n%s\n", messageString.c_str());
-//     DEBUG_printf("ConnectionHandler::pushMessageToQueue: %d\n---------------------------------\n\n", msg.length);
-
-//     if (xQueueSend(sendQueue, &msg, QUEUE_TIMEOUT) != pdPASS) {
-//         DEBUG_printf("ConnectionHandler::pushMessageToQueue: Failed to send message to queue\n");
-//     }
-// }
+    messageContainer.insert(messageContainer.end(), message.begin(), message.end());
+    return message.size();
+}
