@@ -48,13 +48,14 @@ void DeviceRegistry::add_register_handler(WriteType type,
 
 TestSubscriber::TestSubscriber(std::string name) : name(name) {
     receiver = xQueueCreate(10, sizeof(Reading));
-    xTaskCreate(receive_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 1, nullptr);
+    xTaskCreate(receive_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 2, nullptr);
 }
 
 void TestSubscriber::receive() {
     for (;;) {
         Reading reading;
         if (xQueueReceive(receiver, &reading, pdMS_TO_TICKS(500))) {
+            trap(reading);
             if (reading.type == ReadingType::FAN_COUNTER) {
                 std::cout << name << ": " << reading.value.u16 << std::endl;
             } else {
@@ -70,7 +71,7 @@ TestWriter::TestWriter(std::string name, QueueHandle_t handle) {
     this->name = std::move(name);
     this->send_handle = handle;
 
-    xTaskCreate(send_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 1, nullptr);
+    xTaskCreate(send_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 2, nullptr);
 }
 
 void TestWriter::add_send_handle(QueueHandle_t handle) { send_handle = handle; }
@@ -82,4 +83,8 @@ void TestWriter::send() {
         msg = 0;
         vTaskDelay(pdMS_TO_TICKS(10000));
     }
+}
+
+void trap(Reading reading) {
+    std::cout << reading.value.u16 << std::endl;
 }

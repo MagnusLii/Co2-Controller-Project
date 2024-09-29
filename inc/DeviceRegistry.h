@@ -60,5 +60,7 @@ private:
     std::string name;
 };
 
+void trap(Reading reading);
+
 #endif /* DEVICEREGISTRY_H_ */
 

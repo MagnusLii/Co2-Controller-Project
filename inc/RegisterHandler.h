@@ -45,7 +45,7 @@ class ReadRegisterHandler {
     TimerHandle_t send_timer = nullptr;
 
     const uint16_t send_interval = 5000;
-    const uint16_t reading_interval = 1000;
+    const uint16_t reading_interval = 2000;
 
     static void send_reading_timer_callback(TimerHandle_t xTimer) {
         ReadRegisterHandler *handler =

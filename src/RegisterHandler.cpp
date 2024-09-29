@@ -46,9 +46,11 @@ ModbusReadHandler::ModbusReadHandler(shared_modbus client, uint8_t device_addres
     this->reading.type = type;
     this->name = name;
 
-    xTaskCreate(mb_read_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(mb_read_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 2, NULL);
+    /*
     this->send_timer = xTimerCreate(name.c_str(), pdMS_TO_TICKS(send_interval), pdTRUE, this,
                                     send_reading_timer_callback);
+    */
 }
 
 void ModbusReadHandler::get_reading() { reading.value.u32 = reg.get32(); }
@@ -63,16 +65,20 @@ void ModbusReadHandler::read_register() {
 */
 
 void ModbusReadHandler::mb_read() {
-    if (send_timer != nullptr) xTimerStart(send_timer, pdMS_TO_TICKS(2000));
+    //if (send_timer != nullptr) xTimerStart(send_timer, pdMS_TO_TICKS(send_interval));
     for (;;) {
-        while (controller->isbusy())
+        TickType_t start_time = xTaskGetTickCount();
+        while (controller->isbusy()) {
             vTaskDelay(5);
+        }
         // std::cout << "Starting read..." << std::endl;
         reg.start_transfer();
-        while (controller->isbusy())
+        while (controller->isbusy()) {
             vTaskDelay(5);
+        }
         send_reading();
-        vTaskDelay(pdMS_TO_TICKS(reading_interval)); // TBD
+        TickType_t delay_time = start_time + reading_interval - xTaskGetTickCount();
+        vTaskDelay(delay_time); // TBD
     }
 }
 
@@ -87,7 +93,7 @@ ModbusWriteHandler::ModbusWriteHandler(shared_modbus client, uint8_t device_addr
     this->name = name;
     this->write_queue = xQueueCreate(5, sizeof(uint32_t));
 
-    xTaskCreate(mb_write_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(mb_write_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 2, NULL);
 }
 
 void ModbusWriteHandler::write_to_reg(uint32_t value) {
