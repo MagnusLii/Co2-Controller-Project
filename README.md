@@ -10,6 +10,7 @@ The file needs to be created manually and should contain the following macros:<b
 #define TALK_BACK_API_KEY "XXX"
 #define WIFI_SSID "XXX"
 #define WIFI_PASSWORD "XXX"
-#define THINGSPEAK_HOSTNAME "XXX" // <--- use IP address not url.
-#define THINGSPEAK_PORT XXX
+#define THINGSPEAK_IP "3.224.58.169"
+#define THINGSPEAK_HOSTNAME "api.thingspeak.com"
+#define THINGSPEAK_PORT 80
 ```
