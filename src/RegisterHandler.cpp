@@ -6,7 +6,6 @@
 #include <iostream>
 #include <ostream>
 
-/*
 void ReadRegisterHandler::add_subscriber(QueueHandle_t subscriber) {
     subscribers.push_back(subscriber);
 }
@@ -16,18 +15,18 @@ void ReadRegisterHandler::remove_subscriber(QueueHandle_t subscriber) {
                       subscribers.end());
 }
 void ReadRegisterHandler::send_reading() {
-    // std::cout << "Sending reading..." << std::endl;
     get_reading();
+    //std::cout << "Sending reading..." << reading.value.f32 << std::endl;
     for (auto subscriber : subscribers) {
         xQueueSend(subscriber, &reading, 0);
     }
 }
-*/
+
 ReadingType ReadRegisterHandler::get_type() { return reading.type; }
 
 std::string ReadRegisterHandler::get_name() { return name; }
 
-TimerHandle_t ReadRegisterHandler::get_timer_handle() { return read_timer; }
+TimerHandle_t ReadRegisterHandler::get_timer_handle() { return send_timer; }
 
 /* Test
 ModbusReadHandler::ModbusReadHandler(shared_modbus mbctrl, ReadRegister* register_, ReadingType
@@ -47,41 +46,37 @@ ModbusReadHandler::ModbusReadHandler(shared_modbus client, uint8_t device_addres
     this->reading.type = type;
     this->name = name;
 
-    this->read_timer = xTimerCreate(name.c_str(), pdMS_TO_TICKS(reading_interval), pdTRUE, this, read_register_callback);
-    xTimerStart(this->read_timer, 0); // START IMMEDIATELY
-    /*
-        xTaskCreate(mb_read_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 1, NULL);
-        this->send_timer = xTimerCreate(name.c_str(), pdMS_TO_TICKS(send_interval), pdTRUE, this,
-                                        send_reading_timer_callback);
-                                        */
+    xTaskCreate(mb_read_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 1, NULL);
+    this->send_timer = xTimerCreate(name.c_str(), pdMS_TO_TICKS(send_interval), pdTRUE, this,
+                                    send_reading_timer_callback);
 }
 
-Reading ModbusReadHandler::get_reading() {
-    return reading;
-}
+void ModbusReadHandler::get_reading() { reading.value.u32 = reg.get32(); }
 
+/*
 void ModbusReadHandler::read_register() {
     reg.start_transfer();
     while (controller->isbusy())
         vTaskDelay(pdMS_TO_TICKS(10));
     reading.value.u32 = reg.get32();
 }
+*/
 
-/*
 void ModbusReadHandler::mb_read() {
     if (send_timer != nullptr) xTimerStart(send_timer, pdMS_TO_TICKS(2000));
     for (;;) {
-        // TickType_t start = xTaskGetTickCount();
         while (controller->isbusy())
             vTaskDelay(5);
         // std::cout << "Starting read..." << std::endl;
         reg.start_transfer();
+        while (controller->isbusy())
+            vTaskDelay(5);
+        send_reading();
         vTaskDelay(pdMS_TO_TICKS(reading_interval)); // TBD
     }
 }
-*/
 
-TaskHandle_t WriteRegisterHandler::get_write_task_handle() { return write_task_handle; }
+QueueHandle_t WriteRegisterHandler::get_write_queue_handle() { return write_queue; }
 
 ModbusWriteHandler::ModbusWriteHandler(shared_modbus client, uint8_t device_address,
                                        uint16_t register_address, uint8_t nr_of_registers,
@@ -90,29 +85,27 @@ ModbusWriteHandler::ModbusWriteHandler(shared_modbus client, uint8_t device_addr
     this->controller = client;
     this->type = type;
     this->name = name;
+    this->write_queue = xQueueCreate(5, sizeof(uint32_t));
 
-    // xTaskCreate(mb_write_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 1,
-    // &write_task_handle);
+    xTaskCreate(mb_write_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 1, NULL);
 }
 
 void ModbusWriteHandler::write_to_reg(uint32_t value) {
-    while(controller->isbusy()) // Someone already using the modbus
+    while (controller->isbusy()) // Someone already using the modbus
         vTaskDelay(5);
     reg.start_transfer(value);
 }
 
-/*
 void ModbusWriteHandler::mb_write() {
     uint32_t received_value = 0;
 
     for (;;) {
-        if (xTaskNotifyWait(0, ULONG_MAX, &received_value, portMAX_DELAY) == pdTRUE) {
+        if (xQueueReceive(write_queue, &received_value, portMAX_DELAY)) {
             while (controller->isbusy())
                 vTaskDelay(5);
             reg.start_transfer(received_value);
         }
     }
 }
-*/
 
 std::string WriteRegisterHandler::get_name() { return name; }

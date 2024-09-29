@@ -10,20 +10,17 @@
 #include <memory>
 #include <string>
 
-class DeviceManager; // TODO: TEMPORARY, REMOVE THIS
-struct ControlMessage{ WriteType type; uint32_t value; }; // TODO: TEMPORARY
-
 class DeviceRegistry { // Maybe rename to something something
   public:
     DeviceRegistry();
-    //void subscribe_to_handler(ReadingType type, QueueHandle_t receiver);
-    //TaskHandle_t subscribe_to_handler(WriteType type);
-    //void subscribe_to_all(QueueHandle_t receiver);
+    void subscribe_to_handler(ReadingType type, QueueHandle_t receiver);
+    QueueHandle_t subscribe_to_handler(WriteType type);
+    void subscribe_to_all(QueueHandle_t receiver);
     void add_register_handler(ReadingType type, std::shared_ptr<ReadRegisterHandler> handler);
     void add_register_handler(WriteType type, std::shared_ptr<WriteRegisterHandler> handler);
 
   protected:
-    std::vector<std::pair<ReadingType, std::shared_ptr<ReadRegisterHandler>>> read_handlers;
+    std::map<ReadingType, std::shared_ptr<ReadRegisterHandler>> read_handlers;
     std::map<WriteType, std::shared_ptr<WriteRegisterHandler>> write_handlers;
 };
 
@@ -47,8 +44,8 @@ class TestSubscriber {
 
 class TestWriter {
 public:
-    TestWriter(std::string name, QueueHandle_t relay_queue);
-    //void add_send_handle(TaskHandle_t handle);
+    TestWriter(std::string name, QueueHandle_t handle);
+    void add_send_handle(QueueHandle_t handle);
 
 private:
     void send();
@@ -58,7 +55,7 @@ private:
         writer->send();
     }
 
-    //TaskHandle_t send_handle;
+    QueueHandle_t send_handle;
     QueueHandle_t relay_queue;
     std::string name;
 };
