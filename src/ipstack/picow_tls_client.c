@@ -7,7 +7,7 @@
 #include <mbedtls/debug.h>
 #include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
-#include "connection_defines.c"
+#include "connection_defines.h" // Added to work with non CMakeList macros -magnus
 
 #if 1
 //#define TLS_CLIENT_SERVER        "18.198.188.151"
