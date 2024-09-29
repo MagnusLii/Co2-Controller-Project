@@ -1,5 +1,5 @@
 #include "connection_handler.h"
-#include "connection_defines.c"
+#include "connection_defines.h"
 #include "pico/stdlib.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -8,6 +8,9 @@
 #include <string>
 #include <cstring>
 #include <iostream>
+#include "api_tasks.h"
+#include "task_defines.h"
+#include "connection_defines.h"
 
 #define SEND_QUEUE_SIZE 64
 #define RECEIVE_QUEUE_SIZE 64
@@ -27,28 +30,26 @@ QueueHandle_t receiveQueue;
 TaskHandle_t reconnectHandle = NULL;
 
 
-// A structure to store both the message to send and its length.
-struct Message {
-    std::vector<unsigned char> data;
-    int length;
-};
-
-
 void send_data_task(void *param) {
-    ConnectionHandler *connHandler = static_cast<ConnectionHandler *>(param);
+    auto *connHandler = static_cast<ConnectionHandler *>(param);
     Message msgToSend;
     std::vector<unsigned char> receivedData;
 
-    while (!connHandler->isIPStackInitialized()) {
-        vTaskDelay(pdMS_TO_TICKS(ONE_SECOND));
+    while (connHandler->isIPStackInitialized() != true) {
+        DEBUG_printf("send_data_task(): while loop: isIPStackinitialized: %d", connHandler->isIPStackInitialized());
+        vTaskDelay(pdMS_TO_TICKS(5 * ONE_SECOND));
     }
 
     for(;;) {
 
         if (xQueueReceive(sendQueue, &msgToSend, portMAX_DELAY) == pdPASS) {
 
-            if (!connHandler->isConnected()) {
+            if (connHandler->isConnected() != true) {
                 xTaskNotifyGive(reconnectHandle);
+                while (connHandler->isConnected() != true) // prevent multiple notifications.
+                {
+                    vTaskDelay(pdMS_TO_TICKS(5 * ONE_SECOND));
+                }
             }
 
             int result = connHandler->send(msgToSend.data);
@@ -66,17 +67,21 @@ void send_data_task(void *param) {
 
 // This task should be high prio.
 void receive_data_task(void *param) {
-    ConnectionHandler *connHandler = static_cast<ConnectionHandler *>(param);
+    auto *connHandler = static_cast<ConnectionHandler *>(param);
     std::vector<unsigned char> receivedData;
 
-    while (!connHandler->isIPStackInitialized()) {
+    while (connHandler->isIPStackInitialized() != true) {
         vTaskDelay(pdMS_TO_TICKS(ONE_SECOND));
     }
 
     for(;;) {
 
-        if (!connHandler->isConnected()) {
+        if (connHandler->isConnected() != true) {
             xTaskNotifyGive(reconnectHandle);
+            while (!connHandler->isConnected()) // prevent multiple notifications.
+            {
+                vTaskDelay(pdMS_TO_TICKS(5 * ONE_SECOND));
+            }
         }
 
         receivedData = connHandler->receive(MAX_MESSAGE_LENGHT, RECEIVE_TIMEOUT_MS); // TODO: this is blocking.
@@ -91,45 +96,45 @@ void receive_data_task(void *param) {
 }
 
 
+// void test(void *param) {
+//     auto *connHandler = static_cast<ConnectionHandler *>(param);
+//         while (connHandler->isIPStackInitialized() != true) {
+//         vTaskDelay(pdMS_TO_TICKS(ONE_SECOND));
+//     }
+// }
+
+
 // This task must be called, and should preferably be one of the first tasks to be called on startup.
 void fully_initialize_connhandler_task(void *param) {
-    ConnectionHandler *connHandler = static_cast<ConnectionHandler *>(param);
+    auto *connHandler = static_cast<ConnectionHandler *>(param);
 
+    // This may not be working as intended, doesn't seem to reinit upon failure.
     while (!connHandler->isIPStackInitialized()) {
         connHandler->initializeIPStack();
-        vTaskDelay(pdMS_TO_TICKS(ONE_SECOND));
+        vTaskDelay(pdMS_TO_TICKS(5 * ONE_SECOND));
     }
     
-    while (!connHandler->connect(THINGSPEAK_HOSTNAME, THINGSPEAK_PORT)) {
-        vTaskDelay(pdMS_TO_TICKS(ONE_SECOND));
+    while (!connHandler->connect(THINGSPEAK_IP, THINGSPEAK_PORT)) {
+        vTaskDelay(pdMS_TO_TICKS(5 * ONE_SECOND));
     }
 
-    // Setup reconnect task.
-    xTaskCreate(reconnect_task, "Reconnect task", 512, connHandler, tskIDLE_PRIORITY + 1, &reconnectHandle); // TODO: Change priority.
+    // Create dependent tasks
+    xTaskCreate(reconnect_task, "Reconnect task", 2048, connHandler, TASK_PRIORITY_LOW, &reconnectHandle);
+    xTaskCreate(send_data_task, "send", 2048, (void *) connHandler, TASK_PRIORITY_LOW, nullptr);
+    xTaskCreate(receive_data_task, "receive", 2048, (void *) connHandler, TASK_PRIORITY_LOW, nullptr);
 
     vTaskDelete(NULL);
 }
 
 
 void reconnect_task(void *param) {
-    ConnectionHandler *connHandler = static_cast<ConnectionHandler *>(param);
+    auto *connHandler = static_cast<ConnectionHandler *>(param);
 
     for (;;){
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
         while (!connHandler->isConnected()) {
-            connHandler->connect(THINGSPEAK_HOSTNAME, THINGSPEAK_PORT);
+            connHandler->connect(THINGSPEAK_IP, THINGSPEAK_PORT);
             // TODO: Maybe add a IPStack reinitialization here.
         }
     }
 }
-
-// void generate_test_data_task(void *param) {
-//     ConnectionHandler *connHandler = static_cast<ConnectionHandler *>(param);
-
-//         for(;;) {
-//             vTaskDelay(pdMS_TO_TICKS(10000));
-//             connHandler->pushMessageToQueue("POST https://api.thingspeak.com/update", REQUEST_AND_URL,
-//                                             "12", FIELD1,
-//                                             nullptr);
-//         }
-// }

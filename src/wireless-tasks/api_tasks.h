@@ -2,7 +2,7 @@
 #define COMMUNICATION_TASKS_H
 
 #include "connection_handler.h"
-#include "connection_defines.c"
+#include "connection_defines.h"
 #include "pico/stdlib.h"
 #include "FreeRTOS.h"
 #include "task.h"
