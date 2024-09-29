@@ -23,7 +23,8 @@ add_executable(${ProjectName}
 
         pico_hw/dma_channel.cpp
         pico_hw/uart_instance.cpp
-        #        pico_hw/i2c_instance.cpp
+        pico_hw/i2c_instance.cpp
+        i2c/pressure_register.cpp
 )
 
 target_include_directories(${ProjectName} PRIVATE

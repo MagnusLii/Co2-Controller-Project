@@ -115,3 +115,25 @@ void ModbusWriteHandler::mb_write() {
 }
 
 std::string WriteRegisterHandler::get_name() { return name; }
+
+I2CHandler::I2CHandler(shared_i2c i2c_i, uint8_t device_address) : reg(i2c_i, device_address) {
+    this->i2c = i2c_i;
+    std::cout << "HERE" << std::endl;
+    xTaskCreate(i2c_read_task, "i2c_read_task", 256, this, tskIDLE_PRIORITY + 1, NULL);
+}
+
+void I2CHandler::get_reading() {
+    reading.value.i16 = reg.read_register();
+}
+
+void I2CHandler::write_to_reg(uint32_t value) {
+    return; // Not implemented, I don't believe we actually need this
+}
+
+void I2CHandler::i2c_read() {
+    for (;;) {
+        get_reading();
+        send_reading();
+        vTaskDelay(reading_interval);
+    }
+}

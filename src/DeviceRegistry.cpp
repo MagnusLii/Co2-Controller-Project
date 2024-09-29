@@ -1,17 +1,19 @@
 #include "DeviceRegistry.h"
 
-DeviceRegistry::DeviceRegistry(shared_modbus mbctrl) : mbctrl(mbctrl) {
+DeviceRegistry::DeviceRegistry(shared_modbus mbctrl, shared_i2c i2c_i) : mbctrl(mbctrl), i2c(i2c_i) {
     auto co2 = std::make_shared<ModbusReadHandler>(mbctrl, 240, 0x0, 2, true, ReadingType::CO2, "CO2");
     auto temp = std::make_shared<ModbusReadHandler>(mbctrl, 241, 0x2, 2, true, ReadingType::TEMPERATURE, "Temp");
     auto hum = std::make_shared<ModbusReadHandler>(mbctrl, 241, 0x0, 2, true, ReadingType::REL_HUMIDITY, "Hum");
     auto fan = std::make_shared<ModbusReadHandler>(mbctrl, 1, 4, 1, false, ReadingType::FAN_COUNTER, "Fan Counter");
     auto speed = std::make_shared<ModbusWriteHandler>(mbctrl, 1, 0, 1, WriteType::FAN_SPEED, "Fan Speed");
+    auto pressure = std::make_shared<I2CHandler>(i2c_i, 0x40);
 
-    add_register_handler(ReadingType::CO2, co2);
-    add_register_handler(ReadingType::TEMPERATURE, temp);
-    add_register_handler(ReadingType::REL_HUMIDITY, hum);
-    add_register_handler(ReadingType::FAN_COUNTER, fan);
-    add_register_handler(WriteType::FAN_SPEED, speed);
+    add_register_handler(co2, ReadingType::CO2);
+    add_register_handler(temp, ReadingType::TEMPERATURE);
+    add_register_handler(hum, ReadingType::REL_HUMIDITY);
+    add_register_handler(fan, ReadingType::FAN_COUNTER);
+    add_register_handler(speed, WriteType::FAN_SPEED);
+    //add_register_handler(pressure, ReadingType::PRESSURE);
 }
 
 void DeviceRegistry::subscribe_to_handler(ReadingType type, QueueHandle_t receiver) {
@@ -27,10 +29,9 @@ QueueHandle_t DeviceRegistry::get_write_queue_handle(WriteType type) {
     if (write_handlers.find(type) != write_handlers.end()) {
         std::cout << "Subscriber given handle to " << write_handlers[type]->get_name() << std::endl;
         return write_handlers[type]->get_write_queue_handle();
-    } else {
-        std::cout << "Handler not found" << std::endl;
-        return nullptr;
     }
+    std::cout << "Handler not found" << std::endl;
+    return nullptr;
 }
 
 void DeviceRegistry::subscribe_to_all(QueueHandle_t receiver) {
@@ -40,8 +41,8 @@ void DeviceRegistry::subscribe_to_all(QueueHandle_t receiver) {
     }
 }
 
-void DeviceRegistry::add_register_handler(ReadingType type,
-                                          std::shared_ptr<ReadRegisterHandler> handler) {
+void DeviceRegistry::add_register_handler(std::shared_ptr<ReadRegisterHandler> handler, ReadingType type
+                                          ) {
     for (auto const &handler_pair : read_handlers) {
         if (handler_pair.first == type) {
             std::cout << "Handler already exists" << std::endl;
@@ -52,11 +53,23 @@ void DeviceRegistry::add_register_handler(ReadingType type,
     std::cout << "Read handler added" << std::endl;
 }
 
-void DeviceRegistry::add_register_handler(WriteType type,
-                                          std::shared_ptr<WriteRegisterHandler> handler) {
+void DeviceRegistry::add_register_handler(std::shared_ptr<WriteRegisterHandler> handler, WriteType type
+                                          ) {
     write_handlers[type] = handler;
     std::cout << "Write handler added" << std::endl;
 }
+
+void DeviceRegistry::add_register_handler(std::shared_ptr<I2CHandler> handler, ReadingType rtype,
+                                          WriteType wtype) {
+    if (rtype != ReadingType::UNSET) {
+        add_register_handler(handler, rtype);
+    }
+
+    if (wtype != WriteType::UNSET) {
+        add_register_handler(handler, wtype);
+    }
+}
+
 
 TestSubscriber::TestSubscriber(std::string name) : name(name) {
     receiver = xQueueCreate(10, sizeof(Reading));
@@ -67,7 +80,7 @@ void TestSubscriber::receive() {
     for (;;) {
         Reading reading;
         if (xQueueReceive(receiver, &reading, pdMS_TO_TICKS(500))) {
-            trap(reading);
+            trap(reading); // TODO: Remove
             if (reading.type == ReadingType::FAN_COUNTER) {
                 std::cout << name << ": " << reading.value.u16 << std::endl;
             } else {

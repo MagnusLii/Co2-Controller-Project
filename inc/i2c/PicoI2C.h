@@ -10,6 +10,8 @@
 #include "hardware/i2c.h"
 #include "Fmutex.h"
 
+#define shared_i2c std::shared_ptr<PicoI2C>
+
 class PicoI2C {
 public:
     explicit PicoI2C(uint bus_nr, uint speed = 100000);

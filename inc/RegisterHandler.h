@@ -8,8 +8,10 @@
 #include "queue.h"
 #include "timers.h"
 #include "uart_instance.h"
+#include "PicoI2C.h"
 
 #include <algorithm>
+#include <pressure_register.h>
 #include <string>
 #include <vector>
 
@@ -24,6 +26,7 @@ struct Reading {
         float f32;
         int32_t i32;
         uint16_t u16;
+        int16_t i16;
     } value;
 };
 
@@ -76,16 +79,6 @@ class ModbusReadHandler : public ReadRegisterHandler {
     ReadRegister reg;
 };
 
-// TODO:
-//class I2CReadHandler : public ReadRegisterHandler {
-//  public:
-//    I2CReadHandler() = default;
-//
-//  private:
-//    Reading get_reading() override;
-//
-//    // I2C Reg
-//};
 
 class WriteRegisterHandler {
   public:
@@ -108,7 +101,7 @@ class ModbusWriteHandler : public WriteRegisterHandler {
     ModbusWriteHandler(shared_modbus client, uint8_t server_address, uint16_t register_address,
                        uint8_t nr_of_registers, WriteType type, std::string name);
 
-    void write_to_reg(uint32_t value);
+    void write_to_reg(uint32_t value) override;
 
   private:
     void mb_write();
@@ -119,6 +112,25 @@ class ModbusWriteHandler : public WriteRegisterHandler {
 
     shared_modbus controller;
     WriteRegister reg;
+};
+
+
+// TODO:
+class I2CHandler : public ReadRegisterHandler, public WriteRegisterHandler {
+  public:
+    explicit I2CHandler(shared_i2c i2c_i, uint8_t device_address);
+
+    void get_reading() override;
+    void write_to_reg(uint32_t value) override;
+  private:
+    void i2c_read();
+    static void i2c_read_task(void *pvParameters) {
+      I2CHandler *handler = static_cast<I2CHandler *>(pvParameters);
+      handler->i2c_read();
+    }
+
+    shared_i2c i2c;
+    PressureRegister reg; // Only I2C dev we have so let's just specify it
 };
 
 #endif /* REGISTERHANDLER_H_ */
