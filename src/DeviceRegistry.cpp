@@ -1,6 +1,18 @@
 #include "DeviceRegistry.h"
 
-DeviceRegistry::DeviceRegistry() {}
+DeviceRegistry::DeviceRegistry(shared_modbus mbctrl) : mbctrl(mbctrl) {
+    auto co2 = std::make_shared<ModbusReadHandler>(mbctrl, 240, 0x0, 2, true, ReadingType::CO2, "CO2");
+    auto temp = std::make_shared<ModbusReadHandler>(mbctrl, 241, 0x2, 2, true, ReadingType::TEMPERATURE, "Temp");
+    auto hum = std::make_shared<ModbusReadHandler>(mbctrl, 241, 0x0, 2, true, ReadingType::REL_HUMIDITY, "Hum");
+    auto fan = std::make_shared<ModbusReadHandler>(mbctrl, 1, 4, 1, false, ReadingType::FAN_COUNTER, "Fan Counter");
+    auto speed = std::make_shared<ModbusWriteHandler>(mbctrl, 1, 0, 1, WriteType::FAN_SPEED, "Fan Speed");
+
+    add_register_handler(ReadingType::CO2, co2);
+    add_register_handler(ReadingType::TEMPERATURE, temp);
+    add_register_handler(ReadingType::REL_HUMIDITY, hum);
+    add_register_handler(ReadingType::FAN_COUNTER, fan);
+    add_register_handler(WriteType::FAN_SPEED, speed);
+}
 
 void DeviceRegistry::subscribe_to_handler(ReadingType type, QueueHandle_t receiver) {
     if (read_handlers.find(type) != read_handlers.end()) {
@@ -11,7 +23,7 @@ void DeviceRegistry::subscribe_to_handler(ReadingType type, QueueHandle_t receiv
     }
 }
 
-QueueHandle_t DeviceRegistry::subscribe_to_handler(WriteType type) {
+QueueHandle_t DeviceRegistry::get_write_queue_handle(WriteType type) {
     if (write_handlers.find(type) != write_handlers.end()) {
         std::cout << "Subscriber given handle to " << write_handlers[type]->get_name() << std::endl;
         return write_handlers[type]->get_write_queue_handle();

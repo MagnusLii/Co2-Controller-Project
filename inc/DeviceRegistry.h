@@ -12,14 +12,15 @@
 
 class DeviceRegistry { // Maybe rename to something something
   public:
-    DeviceRegistry();
+    DeviceRegistry(shared_modbus mbctrl);
     void subscribe_to_handler(ReadingType type, QueueHandle_t receiver);
-    QueueHandle_t subscribe_to_handler(WriteType type);
+    QueueHandle_t get_write_queue_handle(WriteType type);
     void subscribe_to_all(QueueHandle_t receiver);
     void add_register_handler(ReadingType type, std::shared_ptr<ReadRegisterHandler> handler);
     void add_register_handler(WriteType type, std::shared_ptr<WriteRegisterHandler> handler);
 
-  protected:
+  private:
+    shared_modbus mbctrl;
     std::map<ReadingType, std::shared_ptr<ReadRegisterHandler>> read_handlers;
     std::map<WriteType, std::shared_ptr<WriteRegisterHandler>> write_handlers;
 };
