@@ -41,12 +41,12 @@ bool IPStack::isInitialized() {
     return initialized;
 }
 
-// To bypass init failures
+// To bypass init failures -Magnus
 void IPStack::setInitialized(bool setTo){
     initialized = setTo;
 }
 
-// To bypass connect failures
+// To bypass connect failures -Magnus
 void IPStack::setConnected(bool setTo){
     connected = setTo;
 }
