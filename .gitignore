@@ -2,4 +2,5 @@
 .idea
 build
 cmake-build-debug
-connection_defines.c
+connection_defines.h
+.gitignore
