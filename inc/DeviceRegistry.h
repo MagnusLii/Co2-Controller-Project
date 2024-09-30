@@ -16,10 +16,9 @@ class DeviceRegistry { // Maybe rename to something something
     void add_shared(shared_modbus sh_mb, shared_i2c sh_i2c);
     void subscribe_to_handler(ReadingType type, QueueHandle_t receiver);
     QueueHandle_t get_write_queue_handle(WriteType type);
-    void subscribe_to_all(QueueHandle_t receiver);
+    void subscribe_to_all(QueueHandle_t receiver); // Not tested
     void add_register_handler(std::shared_ptr<ReadRegisterHandler> handler, ReadingType type);
     void add_register_handler(std::shared_ptr<WriteRegisterHandler> handler, WriteType type);
-    //void add_register_handler(std::shared_ptr<I2CHandler> handler, ReadingType rtype = ReadingType::UNSET, WriteType wtype = WriteType::UNSET);
 
   private:
     void initialize();

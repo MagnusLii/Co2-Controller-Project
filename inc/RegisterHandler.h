@@ -9,9 +9,9 @@
 #include "timers.h"
 #include "uart_instance.h"
 #include "PicoI2C.h"
+#include "pressure_register.h"
 
 #include <algorithm>
-#include <pressure_register.h>
 #include <string>
 #include <vector>
 
@@ -45,23 +45,24 @@ class ReadRegisterHandler : public RegisterHandler {
     void send_reading();
     ReadingType get_type();
     std::string get_name();
-    TimerHandle_t get_timer_handle();
+    //TimerHandle_t get_timer_handle();
     virtual void get_reading() = 0;
 
   protected:
     Reading reading{ReadingType::UNSET, {0}};
-    TickType_t last_reading = 0;
-    TimerHandle_t send_timer = nullptr;
+    //TickType_t last_reading = 0;
+    //TimerHandle_t send_timer = nullptr;
 
     const uint16_t send_interval = 5000;
     const uint16_t reading_interval = 2000;
 
+    /* Unused
     static void send_reading_timer_callback(TimerHandle_t xTimer) {
         ReadRegisterHandler *handler =
             static_cast<ReadRegisterHandler *>(pvTimerGetTimerID(xTimer));
         handler->send_reading();
     }
-
+    */
   private:
     std::vector<QueueHandle_t> subscribers;
 };
@@ -96,9 +97,10 @@ class WriteRegisterHandler : public RegisterHandler {
   protected:
     QueueHandle_t write_queue = nullptr;
     WriteType type = WriteType::UNSET;
-
+/*
   private:
     std::vector<QueueHandle_t> subscribers;
+*/    
 };
 
 class ModbusWriteHandler : public WriteRegisterHandler {

@@ -6,16 +6,20 @@
 #include <iostream>
 #include <ostream>
 
+// Add a subscribers queue handle to the send list (vector)
 void ReadRegisterHandler::add_subscriber(QueueHandle_t subscriber) {
     subscribers.push_back(subscriber);
 }
 
+// Remove a subscribers queue handle from the send list -- probably not used ever
 void ReadRegisterHandler::remove_subscriber(QueueHandle_t subscriber) {
     subscribers.erase(std::remove(subscribers.begin(), subscribers.end(), subscriber),
                       subscribers.end());
 }
+
+// Send the reading to all subscribers
 void ReadRegisterHandler::send_reading() {
-    //std::cout << "Sending reading..." << reading.value.f32 << std::endl;
+    // std::cout << "Sending reading..." << reading.value.f32 << std::endl;
     for (auto subscriber : subscribers) {
         xQueueSend(subscriber, &reading, 0);
     }
@@ -25,18 +29,8 @@ ReadingType ReadRegisterHandler::get_type() { return reading.type; }
 
 std::string ReadRegisterHandler::get_name() { return name; }
 
-TimerHandle_t ReadRegisterHandler::get_timer_handle() { return send_timer; }
+// TimerHandle_t ReadRegisterHandler::get_timer_handle() { return send_timer; }
 
-/* Test
-ModbusReadHandler::ModbusReadHandler(shared_modbus mbctrl, ReadRegister* register_, ReadingType
-type, std::string name) : reg(*register_) { this->controller = mbctrl; this->reading.type = type;
-    this->name = name;
-
-    xTaskCreate(mb_read_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 1, NULL);
-    this->send_timer = xTimerCreate(name.c_str(), pdMS_TO_TICKS(send_interval), pdTRUE, this,
-                                    send_reading_timer_callback);
-}
-*/
 ModbusReadHandler::ModbusReadHandler(shared_modbus client, uint8_t device_address,
                                      uint16_t register_address, uint8_t nr_of_registers,
                                      bool holding_register, ReadingType type, std::string name)
@@ -46,7 +40,8 @@ ModbusReadHandler::ModbusReadHandler(shared_modbus client, uint8_t device_addres
     this->name = name;
 
     xTaskCreate(mb_read_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 2, NULL);
-    /*
+
+    /* Unused - switched to a different approach
     this->send_timer = xTimerCreate(name.c_str(), pdMS_TO_TICKS(send_interval), pdTRUE, this,
                                     send_reading_timer_callback);
     */
@@ -54,7 +49,7 @@ ModbusReadHandler::ModbusReadHandler(shared_modbus client, uint8_t device_addres
 
 void ModbusReadHandler::get_reading() { reading.value.u32 = reg.get32(); }
 
-/*
+/* Unused - switched to a consolidated approach
 void ModbusReadHandler::read_register() {
     reg.start_transfer();
     while (controller->isbusy())
@@ -63,8 +58,9 @@ void ModbusReadHandler::read_register() {
 }
 */
 
+// Main modbus register read task
 void ModbusReadHandler::mb_read() {
-    //if (send_timer != nullptr) xTimerStart(send_timer, pdMS_TO_TICKS(send_interval));
+    // if (send_timer != nullptr) xTimerStart(send_timer, pdMS_TO_TICKS(send_interval));
     for (;;) {
         TickType_t start_time = xTaskGetTickCount();
         while (controller->isbusy()) {
@@ -77,8 +73,8 @@ void ModbusReadHandler::mb_read() {
         }
         get_reading();
         send_reading();
-        TickType_t delay_time = start_time + reading_interval - xTaskGetTickCount();
-        vTaskDelay(delay_time); // TBD
+        TickType_t delay_time = start_time + reading_interval - xTaskGetTickCount(); // TBD
+        vTaskDelay(delay_time);                                                      // TBD
     }
 }
 
@@ -97,11 +93,13 @@ ModbusWriteHandler::ModbusWriteHandler(shared_modbus client, uint8_t device_addr
 }
 
 void ModbusWriteHandler::write_to_reg(uint32_t value) {
-    while (controller->isbusy()) // Someone already using the modbus
+    while (controller->isbusy()) // Someone already using the modbus so wait
         vTaskDelay(5);
     reg.start_transfer(value);
 }
 
+// Main modbus register write task
+// Waits for someone to send value to the queue
 void ModbusWriteHandler::mb_write() {
     uint32_t received_value = 0;
 
@@ -116,7 +114,10 @@ void ModbusWriteHandler::mb_write() {
 
 std::string WriteRegisterHandler::get_name() { return name; }
 
-I2CHandler::I2CHandler(shared_i2c i2c_i, uint8_t device_address, ReadingType rtype, std::string name) : reg(i2c_i, device_address) {
+// I2CHandler - read only for now (I don't think we need to write?)
+I2CHandler::I2CHandler(shared_i2c i2c_i, uint8_t device_address, ReadingType rtype,
+                       std::string name)
+    : reg(i2c_i, device_address) {
     this->i2c = i2c_i;
     this->reading.type = rtype;
     this->name = name;
@@ -126,13 +127,13 @@ I2CHandler::I2CHandler(shared_i2c i2c_i, uint8_t device_address, ReadingType rty
 
 void I2CHandler::get_reading() {
     reading.value.i16 = reg.read_register();
-    //std::cout << reading.value.i16 << std::endl;
+    // std::cout << reading.value.i16 << std::endl;
 }
 
+// Main i2c read task
 void I2CHandler::i2c_read() {
     for (;;) {
         get_reading();
-        //std::cout << reading.value.i16 << std::endl;
         send_reading();
         vTaskDelay(reading_interval);
     }

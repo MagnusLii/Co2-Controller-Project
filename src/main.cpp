@@ -2,7 +2,6 @@
 #include "FreeRTOS.h"
 
 #include "DeviceRegistry.h"
-#include "PicoOsUart.h"
 #include "RegisterHandler.h"
 #include "HardwareConst.h"
 #include "hardware/gpio.h"
@@ -15,12 +14,11 @@
 #include "modbus_controller.h"
 #include "modbus_register.h"
 #include "uart_instance.h"
-// #include "i2c_instance.h"
 #include "PicoI2C.h"
 
 #include <cstdint>
 #include <iostream>
-#include <limits.h>
+#include <climits>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -66,11 +64,6 @@ int main() {
     auto writer = std::make_shared<TestWriter>(); //("speeder", nullptr);
     auto sub5 = std::make_shared<TestSubscriber>(); //("pres");
 
-    //registry.subscribe_to_handler(ReadingType::CO2, sub1.get_queue_handle());
-    //registry.subscribe_to_handler(ReadingType::TEMPERATURE, sub2.get_queue_handle());
-    //registry.subscribe_to_handler(ReadingType::REL_HUMIDITY, sub3.get_queue_handle());
-    //registry.subscribe_to_handler(ReadingType::FAN_COUNTER, sub4.get_queue_handle());
-    //registry.subscribe_to_handler(ReadingType::PRESSURE, sub5.get_queue_handle());
 
     hw_setup_params hw_params{uart_i, mbctrl, i2c_i, registry};
     sub_setup_params sub_params{registry, sub1, sub2, sub3, sub4, sub5, writer};

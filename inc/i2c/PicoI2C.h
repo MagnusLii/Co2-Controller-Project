@@ -10,7 +10,7 @@
 #include "hardware/i2c.h"
 #include "Fmutex.h"
 
-#define shared_i2c std::shared_ptr<PicoI2C>
+#define shared_i2c std::shared_ptr<PicoI2C> // Added
 
 class PicoI2C {
 public:
