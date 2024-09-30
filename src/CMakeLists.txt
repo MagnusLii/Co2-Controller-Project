@@ -2,58 +2,46 @@ add_executable(${ProjectName}
         main.cpp
         critical_section.cpp
         Fmutex.cpp
-        Fmutex.h
-        blinker.cpp
-        blinker.h
-
-        ipstack/IPStack.cpp
-        ipstack/IPStack.h
-        ipstack/lwipopts.h
-        ipstack/tls_common.c
-        ipstack/picow_tls_client.c
-        ipstack/lwipopts_tls.h
-
-        i2c/PicoI2C.cpp
-        i2c/PicoI2C.h
-
-        uart/PicoOsUart.cpp
-        uart/PicoOsUart.h
-
-        modbus/nanomodbus.h
-        modbus/nanomodbus.c
-        modbus/ModbusRegister.cpp
-        modbus/ModbusRegister.h
-        modbus/ModbusClient.cpp
-        modbus/ModbusClient.h
 
         display/framebuf.cpp
-        display/framebuf.h
         display/mono_vlsb.cpp
-        display/mono_vlsb.h
-        #        display/ssd1306.cpp
-        #        display/ssd1306.h
-        display/ssd1306os.h
+#        display/ssd1306.cpp
         display/ssd1306os.cpp
 
-        wireless-tasks/connection_handler.h
+        ipstack/IPStack.cpp
+        ipstack/tls_common.c
+        ipstack/picow_tls_client.c
+
+        i2c/PicoI2C.cpp
+
+        modbus/modbus_controller.cpp
+        modbus/modbus_register.cpp
+
+        pico_hw/dma_channel.cpp
+        pico_hw/uart_instance.cpp
+
+        pressure/pressure_register.cpp
+
+        registry/register_handler.cpp
+        registry/device_registry.cpp
+
         wireless-tasks/connection_handler.cpp
-
-        wireless-tasks/connection_defines.h
-
-        wireless-tasks/api_tasks.h
         wireless-tasks/api_tasks.cpp
-
-        task_defines.h
 )
 
 target_include_directories(${ProjectName} PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
-        modbus
-        uart
-        i2c
-        display
-        ipstack
-        wireless-tasks
+        ${CMAKE_CURRENT_LIST_DIR}/test
+        ${INCLUDE_DIR}
+        ${INCLUDE_DIR}/display
+        ${INCLUDE_DIR}/i2c
+        ${INCLUDE_DIR}/ipstack
+        ${INCLUDE_DIR}/modbus
+        ${INCLUDE_DIR}/pico_hw
+        ${INCLUDE_DIR}/pressure
+        ${INCLUDE_DIR}/registry
+        ${INCLUDE_DIR}/uart
+        ${INCLUDE_DIR}/wireless-tasks
 )
 
 target_compile_definitions(${ProjectName} PRIVATE
@@ -63,6 +51,10 @@ target_compile_definitions(${ProjectName} PRIVATE
         PICO_CYW43_ARCH_DEFAULT_COUNTRY_CODE=CYW43_COUNTRY_FINLAND
 )
 
+target_compile_options(${ProjectName} PRIVATE
+        -Wall
+)
+
 target_link_libraries(${ProjectName}
         pico_stdlib
         hardware_i2c
@@ -70,7 +62,6 @@ target_link_libraries(${ProjectName}
         pico_cyw43_arch_lwip_sys_freertos
         pico_lwip_mbedtls
         pico_mbedtls
-
 )
 
 # Ignore warnings from lwip code
