@@ -41,7 +41,7 @@ target_include_directories(${ProjectName} PRIVATE
         ${INCLUDE_DIR}/pressure
         ${INCLUDE_DIR}/registry
         ${INCLUDE_DIR}/uart
-        ${INCLUDE_DIR}/wireless-tasks
+        ${INCLUDE_DIR}/wireless_tasks
 )
 
 target_compile_definitions(${ProjectName} PRIVATE
