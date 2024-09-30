@@ -17,7 +17,7 @@
 
 enum class ReadingType { CO2, TEMPERATURE, REL_HUMIDITY, FAN_COUNTER, PRESSURE, UNSET };
 
-enum class WriteType { FAN_SPEED, UNSET };
+enum class WriteType { CO2_TARGET, FAN_SPEED, UNSET };
 
 struct Reading {
     ReadingType type;
@@ -86,7 +86,7 @@ class WriteRegisterHandler : public RegisterHandler {
     WriteType type = WriteType::UNSET;
 };
 
-class ModbusWriteHandler final : public WriteRegisterHandler {
+class ModbusWriteHandler : public WriteRegisterHandler {
   public:
     ModbusWriteHandler(shared_modbus controller, uint8_t device_address, uint16_t register_address,
                        uint8_t nr_of_registers, WriteType type, const std::string& name = "ModbusWriteHandler");

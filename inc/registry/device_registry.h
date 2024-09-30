@@ -2,6 +2,7 @@
 #define DEVICEREGISTRY_H_
 
 #include "FreeRTOS.h"
+#include "fan_controller.h"
 #include "queue.h"
 #include "register_handler.h"
 
@@ -16,7 +17,7 @@ class DeviceRegistry { // Maybe rename to something something
     void add_shared(shared_modbus sh_mb, shared_i2c sh_i2c);
     void subscribe_to_handler(ReadingType type, QueueHandle_t receiver);
     QueueHandle_t get_write_queue_handle(WriteType type);
-    void subscribe_to_all(QueueHandle_t receiver); // Not tested
+    void subscribe_to_all(QueueHandle_t receiver);
     void add_register_handler(std::shared_ptr<ReadRegisterHandler> handler, ReadingType type);
     void add_register_handler(std::shared_ptr<WriteRegisterHandler> handler, WriteType type);
 
@@ -29,6 +30,7 @@ class DeviceRegistry { // Maybe rename to something something
 
     shared_modbus mbctrl;
     shared_i2c i2c;
+    std::unique_ptr<FanController> fanctrl;
     std::map<ReadingType, std::shared_ptr<ReadRegisterHandler>> read_handlers;
     std::map<WriteType, std::shared_ptr<WriteRegisterHandler>> write_handlers;
 };
