@@ -13,16 +13,16 @@ void DeviceRegistry::add_shared(shared_modbus sh_mb, shared_i2c sh_i2c) {
 // Setup task to create register handlers and add them to the registry
 void DeviceRegistry::initialize() {
     auto co2 =
-        std::make_unique<ModbusReadHandler>(mbctrl, 240, 0x0, 2, true, ReadingType::CO2, "CO2");
-    auto temp = std::make_unique<ModbusReadHandler>(mbctrl, 241, 0x2, 2, true,
+        std::make_shared<ModbusReadHandler>(mbctrl, 240, 0x0, 2, true, ReadingType::CO2, "CO2");
+    auto temp = std::make_shared<ModbusReadHandler>(mbctrl, 241, 0x2, 2, true,
                                                     ReadingType::TEMPERATURE, "Temp");
-    auto hum = std::make_unique<ModbusReadHandler>(mbctrl, 241, 0x0, 2, true,
+    auto hum = std::make_shared<ModbusReadHandler>(mbctrl, 241, 0x0, 2, true,
                                                    ReadingType::REL_HUMIDITY, "Hum");
-    auto fan = std::make_unique<ModbusReadHandler>(mbctrl, 1, 4, 1, false, ReadingType::FAN_COUNTER,
+    auto fan = std::make_shared<ModbusReadHandler>(mbctrl, 1, 4, 1, false, ReadingType::FAN_COUNTER,
                                                    "Fan Counter");
     auto speed =
-        std::make_unique<ModbusWriteHandler>(mbctrl, 1, 0, 1, WriteType::FAN_SPEED, "Fan Speed");
-    auto pressure = std::make_unique<I2CHandler>(i2c, 0x40, ReadingType::PRESSURE, "Pressure");
+        std::make_shared<ModbusWriteHandler>(mbctrl, 1, 0, 1, WriteType::FAN_SPEED, "Fan Speed");
+    auto pressure = std::make_shared<I2CHandler>(i2c, 0x40, ReadingType::PRESSURE, "Pressure");
 
     add_register_handler(std::move(co2), ReadingType::CO2);
     add_register_handler(std::move(temp), ReadingType::TEMPERATURE);
@@ -66,7 +66,7 @@ void DeviceRegistry::subscribe_to_all(QueueHandle_t receiver) {
 }
 
 // Add a read handler to the registry unless one of the same type already exists
-void DeviceRegistry::add_register_handler(std::unique_ptr<ReadRegisterHandler> handler,
+void DeviceRegistry::add_register_handler(std::shared_ptr<ReadRegisterHandler> handler,
                                           const ReadingType type) {
     for (const auto &[rtype, rhandler] : read_handlers) {
         if (type == rtype) {
@@ -79,7 +79,7 @@ void DeviceRegistry::add_register_handler(std::unique_ptr<ReadRegisterHandler> h
 }
 
 // Add a write handler to the registry unless one of the same type already exists
-void DeviceRegistry::add_register_handler(std::unique_ptr<WriteRegisterHandler> handler,
+void DeviceRegistry::add_register_handler(std::shared_ptr<WriteRegisterHandler> handler,
                                           const WriteType type) {
     for (const auto &[wtype, whandler] : write_handlers) {
         if (type == wtype) {

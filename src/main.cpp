@@ -94,11 +94,12 @@ void subscriber_setup_task(void *pvParameters) {
     auto subscriber4 = std::make_shared<TestSubscriber>("Fan counter");
     auto subscriber5 = std::make_shared<TestSubscriber>("Pressure");
     auto writer = std::make_shared<TestWriter>("Fan speed", params->registry->get_write_queue_handle(WriteType::FAN_SPEED));
-    params->registry->subscribe_to_handler(ReadingType::CO2, subscriber->get_queue_handle());
-    params->registry->subscribe_to_handler(ReadingType::TEMPERATURE, subscriber2->get_queue_handle());
-    params->registry->subscribe_to_handler(ReadingType::REL_HUMIDITY, subscriber3->get_queue_handle());
-    params->registry->subscribe_to_handler(ReadingType::FAN_COUNTER, subscriber4->get_queue_handle());
-    params->registry->subscribe_to_handler(ReadingType::PRESSURE, subscriber5->get_queue_handle());
+    //params->registry->subscribe_to_handler(ReadingType::CO2, subscriber->get_queue_handle());
+    //params->registry->subscribe_to_handler(ReadingType::TEMPERATURE, subscriber2->get_queue_handle());
+    //params->registry->subscribe_to_handler(ReadingType::REL_HUMIDITY, subscriber3->get_queue_handle());
+    //params->registry->subscribe_to_handler(ReadingType::FAN_COUNTER, subscriber4->get_queue_handle());
+    //params->registry->subscribe_to_handler(ReadingType::PRESSURE, subscriber5->get_queue_handle());
+    params->registry->subscribe_to_all(subscriber->get_queue_handle());
 
     auto connHandler = static_cast<ConnectionHandler*>(params->connection_handler);
     xTaskCreate(fully_initialize_connhandler_task, "init IPStack", 1024, (void *) &connHandler, TASK_PRIORITY_ABSOLUTE, nullptr);

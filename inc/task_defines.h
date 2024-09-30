@@ -2,6 +2,7 @@
 #define TASK_DEFINES_H
 
 #include "FreeRTOS.h"
+#include "task.h"
 
 enum TaskPriority {
     TASK_PRIORITY_IDLE = (tskIDLE_PRIORITY),
