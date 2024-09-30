@@ -6,6 +6,9 @@
 Macros for wireless communication are defined in `inc\wireless-tasks\connection_defines.h`<br>
 The file needs to be created manually and should contain the following macros:<br>
 ```c
+#ifndef CONNECTION_DEFINES_H
+#define CONNECTION_DEFINES_H
+
 #define API_KEY "XXX"
 #define TALK_BACK_API_KEY "XXX"
 #define WIFI_SSID "XXX"
@@ -13,4 +16,6 @@ The file needs to be created manually and should contain the following macros:<b
 #define THINGSPEAK_IP "3.224.58.169"
 #define THINGSPEAK_HOSTNAME "api.thingspeak.com"
 #define THINGSPEAK_PORT 80
+
+#endif
 ```
