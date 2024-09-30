@@ -36,10 +36,12 @@ struct hw_setup_params {
 
 struct sub_setup_params {
     std::shared_ptr<DeviceRegistry> registry;
+    ConnectionHandler* connection_handler;
 };
 
 void setup_task(void *pvParameters);
 void subscriber_setup_task(void *pvParameters);
+void test_task(void *param);
 
 int main() {
     stdio_init_all();
@@ -57,6 +59,15 @@ int main() {
 
     xTaskCreate(setup_task, "setup_task", 512, &hw_params, tskIDLE_PRIORITY + 5, nullptr);
     xTaskCreate(subscriber_setup_task, "subscriber_setup_task", 512, &sub_params, tskIDLE_PRIORITY + 3, nullptr);
+
+    sendQueue = xQueueCreate(SEND_QUEUE_SIZE, sizeof(Message));
+    receiveQueue = xQueueCreate(RECEIVE_QUEUE_SIZE, sizeof(Message));
+
+    ConnectionHandler connHandler = ConnectionHandler();
+
+
+
+    xTaskCreate(test_task, "test", 1024, (void*) &connHandler, TASK_PRIORITY_LOW, nullptr);
 
     vTaskStartScheduler();
 
@@ -89,6 +100,40 @@ void subscriber_setup_task(void *pvParameters) {
     params->registry->subscribe_to_handler(ReadingType::FAN_COUNTER, subscriber4->get_queue_handle());
     params->registry->subscribe_to_handler(ReadingType::PRESSURE, subscriber5->get_queue_handle());
 
+    auto connHandler = static_cast<ConnectionHandler*>(params->connection_handler);
+    xTaskCreate(fully_initialize_connhandler_task, "init IPStack", 1024, (void *) &connHandler, TASK_PRIORITY_ABSOLUTE, nullptr);
+
     vTaskSuspend(nullptr);
 }
 
+void test_task(void *param) {
+    ConnectionHandler *connHandler = static_cast<ConnectionHandler *>(param);
+    while (connHandler->isConnected() != true && connHandler->isIPStackInitialized() != true) {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+
+    Message msg;
+
+    float values[8] = {2.0, 3.0, 4.0, 1.0, 1.0, 2.0, 5.0, 2.0};
+
+    for (;;) {
+        vTaskDelay(pdMS_TO_TICKS(10000));
+        msg.length = connHandler->create_minimal_push_message(msg.data, values);
+        DEBUG_printf("Message length: %d\n", msg.length);
+
+        DEBUG_printf("\n---------------------------------------------------------------\n\n");
+        for (int i = 0; i < msg.length; i++) {
+            printf("%c", msg.data[i]);
+        }
+
+        DEBUG_printf("\n---------------------------------------------------------------\n\n");
+
+        if (msg.length > 0) {
+            xQueueSend(sendQueue, &msg, QUEUE_TIMEOUT);
+        }
+    }
+
+
+    xQueueSend(sendQueue, &msg, QUEUE_TIMEOUT);
+    vTaskDelete(NULL);
+}
