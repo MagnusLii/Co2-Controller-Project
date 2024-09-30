@@ -3,7 +3,6 @@
 .clangd
 .cache
 build
-cmake-build-*
+cmake-build-debug
 connection_defines.h
-test
-*.log
+.gitignore
