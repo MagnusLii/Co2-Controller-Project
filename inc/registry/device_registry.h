@@ -3,7 +3,7 @@
 
 #include "FreeRTOS.h"
 #include "queue.h"
-#include "RegisterHandler.h"
+#include "register_handler.h"
 
 #include <iostream>
 #include <map>
@@ -37,8 +37,8 @@ class DeviceRegistry { // Maybe rename to something something
 class TestSubscriber {
   public:
     TestSubscriber();
-    explicit TestSubscriber(std::string name);
-    QueueHandle_t get_queue_handle();
+    explicit TestSubscriber(const std::string& name);
+    [[nodiscard]] QueueHandle_t get_queue_handle() const;
 
   private:
     void receive();
@@ -59,7 +59,7 @@ public:
     void add_send_handle(QueueHandle_t handle);
 
 private:
-    void send();
+    void send() const;
 
     static void send_task(void *pvParameters) {
         auto *writer = static_cast<TestWriter *>(pvParameters);

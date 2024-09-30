@@ -15,8 +15,6 @@ private:
     shared_i2c i2c;
     uint8_t payload;
     uint8_t devaddr;
-    uint8_t wbuffer[16];
-    uint8_t rbuffer[16];
 
     const uint8_t payload_len = 3;
     const uint16_t scale_factor = 240;

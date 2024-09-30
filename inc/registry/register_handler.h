@@ -43,44 +43,32 @@ class ReadRegisterHandler : public RegisterHandler {
     void add_subscriber(QueueHandle_t subscriber);
     void remove_subscriber(QueueHandle_t subscriber);
     void send_reading();
-    ReadingType get_type();
+    [[nodiscard]] ReadingType get_type() const;
     std::string get_name();
-    //TimerHandle_t get_timer_handle();
     virtual void get_reading() = 0;
 
   protected:
     Reading reading{ReadingType::UNSET, {0}};
-    //TickType_t last_reading = 0;
-    //TimerHandle_t send_timer = nullptr;
 
-    const uint16_t send_interval = 5000;
-    const uint16_t reading_interval = 2000;
+    const uint16_t reading_interval = 2000; // ms
 
-    /* Unused
-    static void send_reading_timer_callback(TimerHandle_t xTimer) {
-        ReadRegisterHandler *handler =
-            static_cast<ReadRegisterHandler *>(pvTimerGetTimerID(xTimer));
-        handler->send_reading();
-    }
-    */
   private:
     std::vector<QueueHandle_t> subscribers;
 };
 
-class ModbusReadHandler : public ReadRegisterHandler {
+class ModbusReadHandler final : public ReadRegisterHandler {
   public:
-    ModbusReadHandler(shared_modbus client, uint8_t server_address, uint16_t register_address,
+    ModbusReadHandler(shared_modbus client, uint8_t device_address, uint16_t register_address,
                       uint8_t nr_of_registers, bool holding_register, ReadingType type,
-                      std::string name);
+                      const std::string& name = "ModbusReadHandler");
     void get_reading() override;
 
   private:
     void mb_read();
     static void mb_read_task(void *pvParameters) {
-        ModbusReadHandler *handler = static_cast<ModbusReadHandler *>(pvParameters);
+        auto *handler = static_cast<ModbusReadHandler *>(pvParameters);
         handler->mb_read();
     }
-    //void read_register();
 
     shared_modbus controller;
     ReadRegister reg;
@@ -89,31 +77,26 @@ class ModbusReadHandler : public ReadRegisterHandler {
 
 class WriteRegisterHandler : public RegisterHandler {
   public:
-    virtual ~WriteRegisterHandler() = default;
-    QueueHandle_t get_write_queue_handle();
+    [[nodiscard]] QueueHandle_t get_write_queue_handle() const;
     virtual void write_to_reg(uint32_t value) = 0;
     std::string get_name();
 
   protected:
     QueueHandle_t write_queue = nullptr;
     WriteType type = WriteType::UNSET;
-/*
-  private:
-    std::vector<QueueHandle_t> subscribers;
-*/    
 };
 
-class ModbusWriteHandler : public WriteRegisterHandler {
+class ModbusWriteHandler final : public WriteRegisterHandler {
   public:
-    ModbusWriteHandler(shared_modbus client, uint8_t server_address, uint16_t register_address,
-                       uint8_t nr_of_registers, WriteType type, std::string name);
+    ModbusWriteHandler(shared_modbus controller, uint8_t device_address, uint16_t register_address,
+                       uint8_t nr_of_registers, WriteType type, const std::string& name = "ModbusWriteHandler");
 
     void write_to_reg(uint32_t value) override;
 
   private:
     void mb_write();
     static void mb_write_task(void *pvParameters) {
-        ModbusWriteHandler *handler = static_cast<ModbusWriteHandler *>(pvParameters);
+        auto *handler = static_cast<ModbusWriteHandler *>(pvParameters);
         handler->mb_write();
     }
 
@@ -121,22 +104,21 @@ class ModbusWriteHandler : public WriteRegisterHandler {
     WriteRegister reg;
 };
 
-
-// TODO:
-class I2CHandler : public ReadRegisterHandler {
+class I2CHandler final : public ReadRegisterHandler {
   public:
-    I2CHandler(shared_i2c i2c_i, uint8_t device_address, ReadingType rtype = ReadingType::UNSET, std::string name = "");
+    I2CHandler(shared_i2c i2c_i, uint8_t device_address, ReadingType rtype = ReadingType::UNSET,
+               const std::string &name = "I2CHandler");
 
     void get_reading() override;
   private:
     void i2c_read();
     static void i2c_read_task(void *pvParameters) {
-      I2CHandler *handler = static_cast<I2CHandler *>(pvParameters);
+      auto *handler = static_cast<I2CHandler *>(pvParameters);
       handler->i2c_read();
     }
 
     shared_i2c i2c;
-    PressureRegister reg; // Only I2C dev we have so let's just specify it
+    PressureRegister reg; // Only I2C dev reg we have so lets go and just specify it
 };
 
 #endif /* REGISTERHANDLER_H_ */

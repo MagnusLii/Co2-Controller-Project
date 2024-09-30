@@ -2,8 +2,11 @@ add_executable(${ProjectName}
         main.cpp
         critical_section.cpp
         Fmutex.cpp
-        RegisterHandler.cpp
-        DeviceRegistry.cpp
+
+        display/framebuf.cpp
+        display/mono_vlsb.cpp
+#        display/ssd1306.cpp
+        display/ssd1306os.cpp
 
         ipstack/IPStack.cpp
         ipstack/tls_common.c
@@ -11,20 +14,16 @@ add_executable(${ProjectName}
 
         i2c/PicoI2C.cpp
 
-#        uart/PicoOsUart.cpp
-
-        display/framebuf.cpp
-        display/mono_vlsb.cpp
-#        display/ssd1306.cpp
-        display/ssd1306os.cpp
-
         modbus/modbus_controller.cpp
         modbus/modbus_register.cpp
 
         pico_hw/dma_channel.cpp
         pico_hw/uart_instance.cpp
-        pico_hw/i2c_instance.cpp
-        i2c/pressure_register.cpp
+
+        pressure/pressure_register.cpp
+
+        registry/register_handler.cpp
+        registry/device_registry.cpp
 )
 
 target_include_directories(${ProjectName} PRIVATE
@@ -35,8 +34,10 @@ target_include_directories(${ProjectName} PRIVATE
         ${INCLUDE_DIR}/i2c
         ${INCLUDE_DIR}/ipstack
         ${INCLUDE_DIR}/modbus
-        ${INCLUDE_DIR}/uart
         ${INCLUDE_DIR}/pico_hw
+        ${INCLUDE_DIR}/pressure
+        ${INCLUDE_DIR}/registry
+        ${INCLUDE_DIR}/uart
 )
 
 target_compile_definitions(${ProjectName} PRIVATE

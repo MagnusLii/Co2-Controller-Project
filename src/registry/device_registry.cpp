@@ -1,4 +1,4 @@
-#include "DeviceRegistry.h"
+#include "device_registry.h"
 
 DeviceRegistry::DeviceRegistry() {
     xTaskCreate(initialize_task, "initialize_registry", 512, this, tskIDLE_PRIORITY + 4, NULL);
@@ -12,17 +12,17 @@ void DeviceRegistry::add_shared(shared_modbus sh_mb, shared_i2c sh_i2c) {
 
 // Setup task to create register handlers and add them to the registry
 void DeviceRegistry::initialize() {
-    auto co2 =
+    const auto co2 =
         std::make_shared<ModbusReadHandler>(mbctrl, 240, 0x0, 2, true, ReadingType::CO2, "CO2");
-    auto temp = std::make_shared<ModbusReadHandler>(mbctrl, 241, 0x2, 2, true,
-                                                    ReadingType::TEMPERATURE, "Temp");
-    auto hum = std::make_shared<ModbusReadHandler>(mbctrl, 241, 0x0, 2, true,
-                                                   ReadingType::REL_HUMIDITY, "Hum");
-    auto fan = std::make_shared<ModbusReadHandler>(mbctrl, 1, 4, 1, false, ReadingType::FAN_COUNTER,
-                                                   "Fan Counter");
-    auto speed =
+    const auto temp = std::make_shared<ModbusReadHandler>(mbctrl, 241, 0x2, 2, true,
+                                                          ReadingType::TEMPERATURE, "Temp");
+    const auto hum = std::make_shared<ModbusReadHandler>(mbctrl, 241, 0x0, 2, true,
+                                                         ReadingType::REL_HUMIDITY, "Hum");
+    const auto fan = std::make_shared<ModbusReadHandler>(mbctrl, 1, 4, 1, false,
+                                                         ReadingType::FAN_COUNTER, "Fan Counter");
+    const auto speed =
         std::make_shared<ModbusWriteHandler>(mbctrl, 1, 0, 1, WriteType::FAN_SPEED, "Fan Speed");
-    auto pressure = std::make_shared<I2CHandler>(i2c, 0x40, ReadingType::PRESSURE, "Pressure");
+    const auto pressure = std::make_shared<I2CHandler>(i2c, 0x40, ReadingType::PRESSURE, "Pressure");
 
     add_register_handler(co2, ReadingType::CO2);
     add_register_handler(temp, ReadingType::TEMPERATURE);
@@ -36,7 +36,7 @@ void DeviceRegistry::initialize() {
 
 // Subscribe to a specific read handler if it exists
 // Subscriber must specify ReadingType and give a queue handle
-void DeviceRegistry::subscribe_to_handler(ReadingType type, QueueHandle_t receiver) {
+void DeviceRegistry::subscribe_to_handler(const ReadingType type, QueueHandle_t receiver) {
     if (read_handlers.find(type) != read_handlers.end()) {
         read_handlers[type]->add_subscriber(receiver);
         std::cout << "Subscriber added to " << read_handlers[type]->get_name() << std::endl;
@@ -47,7 +47,7 @@ void DeviceRegistry::subscribe_to_handler(ReadingType type, QueueHandle_t receiv
 
 // Get write queue handle for a specific write handler
 // Subscriber must specify WriteType and will get a queue handle in return if it exists
-QueueHandle_t DeviceRegistry::get_write_queue_handle(WriteType type) {
+QueueHandle_t DeviceRegistry::get_write_queue_handle(const WriteType type) {
     if (write_handlers.find(type) != write_handlers.end()) {
         std::cout << "Subscriber given handle to " << write_handlers[type]->get_name() << std::endl;
         return write_handlers[type]->get_write_queue_handle();
@@ -60,34 +60,34 @@ QueueHandle_t DeviceRegistry::get_write_queue_handle(WriteType type) {
 // Subscriber must give a queue handle
 void DeviceRegistry::subscribe_to_all(QueueHandle_t receiver) {
     std::cout << "All subscribers added" << std::endl;
-    for (auto &handler : read_handlers) {
-        handler.second->add_subscriber(receiver);
+    for (auto &[rtype, handler] : read_handlers) {
+        handler->add_subscriber(receiver);
     }
 }
 
 // Add a read handler to the registry unless one of the same type already exists
 void DeviceRegistry::add_register_handler(std::shared_ptr<ReadRegisterHandler> handler,
-                                          ReadingType type) {
-    for (auto const &handler_pair : read_handlers) {
-        if (handler_pair.first == type) {
+                                          const ReadingType type) {
+    for (const auto &[rtype, rhandler] : read_handlers) {
+        if (type == rtype) {
             std::cout << "Handler already exists" << std::endl;
             return;
         }
     }
-    read_handlers[type] = handler;
+    read_handlers[type] = std::move(handler);
     std::cout << "Read handler added" << std::endl;
 }
 
 // Add a write handler to the registry unless one of the same type already exists
 void DeviceRegistry::add_register_handler(std::shared_ptr<WriteRegisterHandler> handler,
-                                          WriteType type) {
-    for (auto const &handler_pair : write_handlers) {
-        if (handler_pair.first == type) {
+                                          const WriteType type) {
+    for (const auto &[wtype, whandler] : write_handlers) {
+        if (type == wtype) {
             std::cout << "Handler already exists" << std::endl;
             return;
         }
     }
-    write_handlers[type] = handler;
+    write_handlers[type] = std::move(handler);
     std::cout << "Write handler added" << std::endl;
 }
 
@@ -99,7 +99,7 @@ TestSubscriber::TestSubscriber() {
     xTaskCreate(receive_task, "Receive Task", 256, this, tskIDLE_PRIORITY + 2, nullptr);
 }
 
-TestSubscriber::TestSubscriber(std::string name) : name(name) {
+TestSubscriber::TestSubscriber(const std::string& name) : name(name) {
     receiver = xQueueCreate(10, sizeof(Reading));
     xTaskCreate(receive_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 2, nullptr);
 }
@@ -120,7 +120,7 @@ void TestSubscriber::receive() {
     }
 }
 
-QueueHandle_t TestSubscriber::get_queue_handle() { return receiver; }
+QueueHandle_t TestSubscriber::get_queue_handle() const { return receiver; }
 
 TestWriter::TestWriter() {
     this->name = "TestWriter";
@@ -136,7 +136,7 @@ TestWriter::TestWriter(std::string name, QueueHandle_t handle) {
 
 void TestWriter::add_send_handle(QueueHandle_t handle) { send_handle = handle; }
 
-void TestWriter::send() {
+void TestWriter::send() const {
     uint32_t msg = 400;
     for (;;) {
         xQueueSend(send_handle, &msg, 0);
