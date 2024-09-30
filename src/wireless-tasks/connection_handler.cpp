@@ -23,29 +23,18 @@ const char* FIELD_NAMES[] = {
 ConnectionHandler::ConnectionHandler() = default;
 
 
-// void ConnectionHandler::initializeIPStack() {
-//     bool initialized = false;
-//     while (!initialized) {
-//         ipStack = std::make_unique<IPStack>(WIFI_SSID, WIFI_PASSWORD);
-//         if (!(initialized = ipStack->isInitialized())) {
-//             DEBUG_printf("Deinit IPStack\n");
-//             ipStack->disconnect();
-//             cyw43_arch_deinit();
-//         }
-//     }
-// }
-
 void ConnectionHandler::initializeIPStack(){
     ipStack = std::make_unique<IPStack>(WIFI_SSID, WIFI_PASSWORD);
 
-    // TODO: nothing seems to be working, cyw43_arch_init() creates two tasks, which aren't killed by cyw43_arch_deinit(), causing the system to lock up.
-    // No idea how to reinit a failed IPStack.
     while (!ipStack->isInitialized()) {
-        DEBUG_printf("ConnectionHandler::initializeIPStack(): IPStack not initialized\nReboot the system\n");
-        cyw43_arch_deinit();
-        vTaskDelay(1);
-        ipStack.reset();
-        ipStack = std::make_unique<IPStack>(WIFI_SSID, WIFI_PASSWORD);
+        DEBUG_printf("Connecting to Wi-Fi...\n");
+        if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
+            DEBUG_printf("Failed to connect.\n");
+            ipStack->setInitialized(false);
+        } else {
+            DEBUG_printf("Connected.\n");
+            ipStack->setInitialized(true);
+        }
     }
 }
 
