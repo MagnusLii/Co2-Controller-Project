@@ -12,24 +12,24 @@ void DeviceRegistry::add_shared(shared_modbus sh_mb, shared_i2c sh_i2c) {
 
 // Setup task to create register handlers and add them to the registry
 void DeviceRegistry::initialize() {
-    const auto co2 =
-        std::make_shared<ModbusReadHandler>(mbctrl, 240, 0x0, 2, true, ReadingType::CO2, "CO2");
-    const auto temp = std::make_shared<ModbusReadHandler>(mbctrl, 241, 0x2, 2, true,
-                                                          ReadingType::TEMPERATURE, "Temp");
-    const auto hum = std::make_shared<ModbusReadHandler>(mbctrl, 241, 0x0, 2, true,
-                                                         ReadingType::REL_HUMIDITY, "Hum");
-    const auto fan = std::make_shared<ModbusReadHandler>(mbctrl, 1, 4, 1, false,
-                                                         ReadingType::FAN_COUNTER, "Fan Counter");
-    const auto speed =
-        std::make_shared<ModbusWriteHandler>(mbctrl, 1, 0, 1, WriteType::FAN_SPEED, "Fan Speed");
-    const auto pressure = std::make_shared<I2CHandler>(i2c, 0x40, ReadingType::PRESSURE, "Pressure");
+    auto co2 =
+        std::make_unique<ModbusReadHandler>(mbctrl, 240, 0x0, 2, true, ReadingType::CO2, "CO2");
+    auto temp = std::make_unique<ModbusReadHandler>(mbctrl, 241, 0x2, 2, true,
+                                                    ReadingType::TEMPERATURE, "Temp");
+    auto hum = std::make_unique<ModbusReadHandler>(mbctrl, 241, 0x0, 2, true,
+                                                   ReadingType::REL_HUMIDITY, "Hum");
+    auto fan = std::make_unique<ModbusReadHandler>(mbctrl, 1, 4, 1, false, ReadingType::FAN_COUNTER,
+                                                   "Fan Counter");
+    auto speed =
+        std::make_unique<ModbusWriteHandler>(mbctrl, 1, 0, 1, WriteType::FAN_SPEED, "Fan Speed");
+    auto pressure = std::make_unique<I2CHandler>(i2c, 0x40, ReadingType::PRESSURE, "Pressure");
 
-    add_register_handler(co2, ReadingType::CO2);
-    add_register_handler(temp, ReadingType::TEMPERATURE);
-    add_register_handler(hum, ReadingType::REL_HUMIDITY);
-    add_register_handler(fan, ReadingType::FAN_COUNTER);
-    add_register_handler(speed, WriteType::FAN_SPEED);
-    add_register_handler(pressure, ReadingType::PRESSURE);
+    add_register_handler(std::move(co2), ReadingType::CO2);
+    add_register_handler(std::move(temp), ReadingType::TEMPERATURE);
+    add_register_handler(std::move(hum), ReadingType::REL_HUMIDITY);
+    add_register_handler(std::move(fan), ReadingType::FAN_COUNTER);
+    add_register_handler(std::move(speed), WriteType::FAN_SPEED);
+    add_register_handler(std::move(pressure), ReadingType::PRESSURE);
 
     vTaskSuspend(nullptr);
 }
@@ -66,7 +66,7 @@ void DeviceRegistry::subscribe_to_all(QueueHandle_t receiver) {
 }
 
 // Add a read handler to the registry unless one of the same type already exists
-void DeviceRegistry::add_register_handler(std::shared_ptr<ReadRegisterHandler> handler,
+void DeviceRegistry::add_register_handler(std::unique_ptr<ReadRegisterHandler> handler,
                                           const ReadingType type) {
     for (const auto &[rtype, rhandler] : read_handlers) {
         if (type == rtype) {
@@ -79,7 +79,7 @@ void DeviceRegistry::add_register_handler(std::shared_ptr<ReadRegisterHandler> h
 }
 
 // Add a write handler to the registry unless one of the same type already exists
-void DeviceRegistry::add_register_handler(std::shared_ptr<WriteRegisterHandler> handler,
+void DeviceRegistry::add_register_handler(std::unique_ptr<WriteRegisterHandler> handler,
                                           const WriteType type) {
     for (const auto &[wtype, whandler] : write_handlers) {
         if (type == wtype) {
@@ -99,7 +99,7 @@ TestSubscriber::TestSubscriber() {
     xTaskCreate(receive_task, "Receive Task", 256, this, tskIDLE_PRIORITY + 2, nullptr);
 }
 
-TestSubscriber::TestSubscriber(const std::string& name) : name(name) {
+TestSubscriber::TestSubscriber(const std::string &name) : name(name) {
     receiver = xQueueCreate(10, sizeof(Reading));
     xTaskCreate(receive_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 2, nullptr);
 }
@@ -127,8 +127,8 @@ TestWriter::TestWriter() {
     this->send_handle = nullptr;
 }
 
-TestWriter::TestWriter(std::string name, QueueHandle_t handle) {
-    this->name = std::move(name);
+TestWriter::TestWriter(const std::string& name, QueueHandle_t handle) {
+    this->name = name;
     this->send_handle = handle;
 
     xTaskCreate(send_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 2, nullptr);

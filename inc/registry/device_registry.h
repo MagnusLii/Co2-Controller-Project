@@ -17,20 +17,20 @@ class DeviceRegistry { // Maybe rename to something something
     void subscribe_to_handler(ReadingType type, QueueHandle_t receiver);
     QueueHandle_t get_write_queue_handle(WriteType type);
     void subscribe_to_all(QueueHandle_t receiver); // Not tested
-    void add_register_handler(std::shared_ptr<ReadRegisterHandler> handler, ReadingType type);
-    void add_register_handler(std::shared_ptr<WriteRegisterHandler> handler, WriteType type);
+    void add_register_handler(std::unique_ptr<ReadRegisterHandler> handler, ReadingType type);
+    void add_register_handler(std::unique_ptr<WriteRegisterHandler> handler, WriteType type);
 
   private:
     void initialize();
     static void initialize_task(void *pvParameters) {
-      auto dr = static_cast<DeviceRegistry *>(pvParameters);
-      dr->initialize();
+        const auto dr = static_cast<DeviceRegistry *>(pvParameters);
+        dr->initialize();
     }
 
     shared_modbus mbctrl;
     shared_i2c i2c;
-    std::map<ReadingType, std::shared_ptr<ReadRegisterHandler>> read_handlers;
-    std::map<WriteType, std::shared_ptr<WriteRegisterHandler>> write_handlers;
+    std::map<ReadingType, std::unique_ptr<ReadRegisterHandler>> read_handlers;
+    std::map<WriteType, std::unique_ptr<WriteRegisterHandler>> write_handlers;
 };
 
 // Not to be used in production
@@ -55,14 +55,14 @@ class TestSubscriber {
 class TestWriter {
 public:
     TestWriter();
-    TestWriter(std::string name, QueueHandle_t handle);
+    TestWriter(const std::string& name, QueueHandle_t handle);
     void add_send_handle(QueueHandle_t handle);
 
 private:
     void send() const;
 
     static void send_task(void *pvParameters) {
-        auto *writer = static_cast<TestWriter *>(pvParameters);
+        const auto *writer = static_cast<TestWriter *>(pvParameters);
         writer->send();
     }
 
