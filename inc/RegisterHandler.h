@@ -30,9 +30,16 @@ struct Reading {
     } value;
 };
 
-class ReadRegisterHandler {
+class RegisterHandler {
   public:
-    virtual ~ReadRegisterHandler() = default;
+    virtual ~RegisterHandler() = default;
+
+  protected:
+    std::string name;
+};
+
+class ReadRegisterHandler : public RegisterHandler {
+  public:
     void add_subscriber(QueueHandle_t subscriber);
     void remove_subscriber(QueueHandle_t subscriber);
     void send_reading();
@@ -44,7 +51,6 @@ class ReadRegisterHandler {
   protected:
     Reading reading{ReadingType::UNSET, {0}};
     TickType_t last_reading = 0;
-    std::string name = "";
     TimerHandle_t send_timer = nullptr;
 
     const uint16_t send_interval = 5000;
@@ -80,7 +86,7 @@ class ModbusReadHandler : public ReadRegisterHandler {
 };
 
 
-class WriteRegisterHandler {
+class WriteRegisterHandler : public RegisterHandler {
   public:
     virtual ~WriteRegisterHandler() = default;
     QueueHandle_t get_write_queue_handle();
@@ -90,7 +96,6 @@ class WriteRegisterHandler {
   protected:
     QueueHandle_t write_queue = nullptr;
     WriteType type = WriteType::UNSET;
-    std::string name = "";
 
   private:
     std::vector<QueueHandle_t> subscribers;
@@ -116,12 +121,11 @@ class ModbusWriteHandler : public WriteRegisterHandler {
 
 
 // TODO:
-class I2CHandler : public ReadRegisterHandler, public WriteRegisterHandler {
+class I2CHandler : public ReadRegisterHandler {
   public:
-    explicit I2CHandler(shared_i2c i2c_i, uint8_t device_address);
+    I2CHandler(shared_i2c i2c_i, uint8_t device_address, ReadingType rtype = ReadingType::UNSET, std::string name = "");
 
     void get_reading() override;
-    void write_to_reg(uint32_t value) override;
   private:
     void i2c_read();
     static void i2c_read_task(void *pvParameters) {

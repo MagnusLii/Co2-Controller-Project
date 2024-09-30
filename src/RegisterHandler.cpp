@@ -15,7 +15,6 @@ void ReadRegisterHandler::remove_subscriber(QueueHandle_t subscriber) {
                       subscribers.end());
 }
 void ReadRegisterHandler::send_reading() {
-    get_reading();
     //std::cout << "Sending reading..." << reading.value.f32 << std::endl;
     for (auto subscriber : subscribers) {
         xQueueSend(subscriber, &reading, 0);
@@ -76,6 +75,7 @@ void ModbusReadHandler::mb_read() {
         while (controller->isbusy()) {
             vTaskDelay(5);
         }
+        get_reading();
         send_reading();
         TickType_t delay_time = start_time + reading_interval - xTaskGetTickCount();
         vTaskDelay(delay_time); // TBD
@@ -116,23 +116,23 @@ void ModbusWriteHandler::mb_write() {
 
 std::string WriteRegisterHandler::get_name() { return name; }
 
-I2CHandler::I2CHandler(shared_i2c i2c_i, uint8_t device_address) : reg(i2c_i, device_address) {
+I2CHandler::I2CHandler(shared_i2c i2c_i, uint8_t device_address, ReadingType rtype, std::string name) : reg(i2c_i, device_address) {
     this->i2c = i2c_i;
-    std::cout << "HERE" << std::endl;
-    xTaskCreate(i2c_read_task, "i2c_read_task", 256, this, tskIDLE_PRIORITY + 1, NULL);
+    this->reading.type = rtype;
+    this->name = name;
+
+    xTaskCreate(i2c_read_task, "i2c_read_task", 256, this, tskIDLE_PRIORITY + 2, NULL);
 }
 
 void I2CHandler::get_reading() {
     reading.value.i16 = reg.read_register();
-}
-
-void I2CHandler::write_to_reg(uint32_t value) {
-    return; // Not implemented, I don't believe we actually need this
+    //std::cout << reading.value.i16 << std::endl;
 }
 
 void I2CHandler::i2c_read() {
     for (;;) {
         get_reading();
+        //std::cout << reading.value.i16 << std::endl;
         send_reading();
         vTaskDelay(reading_interval);
     }

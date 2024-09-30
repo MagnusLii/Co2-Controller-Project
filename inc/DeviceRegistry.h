@@ -12,15 +12,22 @@
 
 class DeviceRegistry { // Maybe rename to something something
   public:
-    DeviceRegistry(shared_modbus mbctrl, shared_i2c i2c_i);
+    DeviceRegistry();
+    void add_shared(shared_modbus sh_mb, shared_i2c sh_i2c);
     void subscribe_to_handler(ReadingType type, QueueHandle_t receiver);
     QueueHandle_t get_write_queue_handle(WriteType type);
     void subscribe_to_all(QueueHandle_t receiver);
     void add_register_handler(std::shared_ptr<ReadRegisterHandler> handler, ReadingType type);
     void add_register_handler(std::shared_ptr<WriteRegisterHandler> handler, WriteType type);
-    void add_register_handler(std::shared_ptr<I2CHandler> handler, ReadingType rtype = ReadingType::UNSET, WriteType wtype = WriteType::UNSET);
+    //void add_register_handler(std::shared_ptr<I2CHandler> handler, ReadingType rtype = ReadingType::UNSET, WriteType wtype = WriteType::UNSET);
 
   private:
+    void initialize();
+    static void initialize_task(void *pvParameters) {
+      auto dr = static_cast<DeviceRegistry *>(pvParameters);
+      dr->initialize();
+    }
+
     shared_modbus mbctrl;
     shared_i2c i2c;
     std::map<ReadingType, std::shared_ptr<ReadRegisterHandler>> read_handlers;
@@ -30,7 +37,8 @@ class DeviceRegistry { // Maybe rename to something something
 // Not to be used in production
 class TestSubscriber {
   public:
-    TestSubscriber(std::string name);
+    TestSubscriber();
+    explicit TestSubscriber(std::string name);
     QueueHandle_t get_queue_handle();
 
   private:
@@ -47,6 +55,7 @@ class TestSubscriber {
 
 class TestWriter {
 public:
+    TestWriter();
     TestWriter(std::string name, QueueHandle_t handle);
     void add_send_handle(QueueHandle_t handle);
 
@@ -59,7 +68,6 @@ private:
     }
 
     QueueHandle_t send_handle;
-    QueueHandle_t relay_queue;
     std::string name;
 };
 
