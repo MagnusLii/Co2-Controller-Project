@@ -41,6 +41,16 @@ bool IPStack::isInitialized() {
     return initialized;
 }
 
+// To bypass init failures
+void IPStack::setInitialized(bool setTo){
+    initialized = setTo;
+}
+
+// To bypass connect failures
+void IPStack::setConnected(bool setTo){
+    connected = setTo;
+}
+
 int IPStack::connect(uint32_t hostname, int port) {
     return ERR_ARG;
 }
