@@ -13,6 +13,12 @@
 #include "modbus_controller.h"
 #include "uart_instance.h"
 #include "PicoI2C.h"
+#include "connection_handler.h"
+#include "IPStack.h"
+#include <read_runtime_ctr.cpp>
+#include "connection_defines.h"
+#include "api_tasks.h"
+#include "task_defines.h"
 
 #include <cstdint>
 #include <iostream>
@@ -20,10 +26,6 @@
 #include <map>
 #include <memory>
 #include <sstream>
-
-extern "C" {
-uint32_t read_runtime_ctr(void) { return timer_hw->timerawl; }
-}
 
 struct hw_setup_params {
     shared_uart uart;
@@ -42,6 +44,7 @@ void subscriber_setup_task(void *pvParameters);
 int main() {
     stdio_init_all();
     std::cout << "Booting..." << std::endl;
+    
 
     shared_uart uart_i; // {std::make_shared<Uart_instance>(UART_NR, UART_BAUD, UART_TX_PIN, UART_RX_PIN, 2)};
     shared_modbus mbctrl; // {std::make_shared<ModbusCtrl>(uart_i)};
@@ -88,3 +91,4 @@ void subscriber_setup_task(void *pvParameters) {
 
     vTaskSuspend(nullptr);
 }
+
