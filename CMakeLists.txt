@@ -6,7 +6,7 @@ set(ProjectName Keijos-Retirement-Plan-Product)
 # Set any variables required for importing libraries
 set(FREERTOS_KERNEL_PATH ${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-KernelV10.6.2)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 # Import those libraries
 include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)

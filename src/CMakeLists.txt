@@ -29,6 +29,8 @@ add_executable(${ProjectName}
 
         wireless-tasks/connection_handler.cpp
         wireless-tasks/api_tasks.cpp
+
+        rotary/rotary.cpp
 )
 
 target_include_directories(${ProjectName} PRIVATE
@@ -44,6 +46,7 @@ target_include_directories(${ProjectName} PRIVATE
         ${INCLUDE_DIR}/registry
         ${INCLUDE_DIR}/uart
         ${INCLUDE_DIR}/wireless_tasks
+        ${INCLUDE_DIR}/rotary
 )
 
 target_compile_definitions(${ProjectName} PRIVATE

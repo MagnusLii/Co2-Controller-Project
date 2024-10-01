@@ -12,8 +12,9 @@ class Screen {
         QueueHandle_t get_queue_handle(void);
     private:
         static void screen_task(void *pvParameters);
-        void set_reading_text(void);
+        void set_static_shapes(void);
         void set_reading_value(Reading &reading);
+        void set_manual_fan_speed(float percentage);
         std::unique_ptr<ssd1306os> display;
         QueueHandle_t control_queue;
         mono_vlsb reading_blit_buf;
