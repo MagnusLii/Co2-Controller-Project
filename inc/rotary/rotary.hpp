@@ -15,9 +15,11 @@ class Rotary {
 
     private:
         void irq_handler(uint gpio, uint32_t mask);
+        bool debounce(void);
         const uint rot_sw;
-        uint rot_a;
-        uint rot_b;
+        const uint rot_a;
+        const uint rot_b;
+        uint32_t time;
 };
 
 #endif
