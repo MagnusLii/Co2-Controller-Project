@@ -8,6 +8,8 @@ add_executable(${ProjectName}
 #        display/ssd1306.cpp
         display/ssd1306os.cpp
 
+        display/screen.cpp
+
         ipstack/IPStack.cpp
         ipstack/tls_common.c
         ipstack/picow_tls_client.c

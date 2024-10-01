@@ -87,7 +87,7 @@ void receive_data_task(void *param) {
         receivedData = connHandler->receive(MAX_MESSAGE_LENGHT, RECEIVE_TIMEOUT_MS); // TODO: this is blocking.
 
         if (!receivedData.empty()) {
-            DEBUG_printf("Received %lu bytes\n", receivedData.size());
+            DEBUG_printf("Received %u bytes\n", receivedData.size());
             DEBUG_printf("Received data: %s\n", receivedData.data());
         }
 
