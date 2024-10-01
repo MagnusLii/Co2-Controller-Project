@@ -19,6 +19,8 @@
 #include "connection_defines.h"
 #include "api_tasks.h"
 #include "task_defines.h"
+#include "logHandler.h"
+#include "eeprom.h"
 
 #include <cstdint>
 #include <iostream>
@@ -39,20 +41,28 @@ struct sub_setup_params {
     ConnectionHandler* connection_handler;
 };
 
+SemaphoreHandle_t lock;
+
 void setup_task(void *pvParameters);
 void subscriber_setup_task(void *pvParameters);
 void test_task(void *param);
+void write_eeprom_task(void *param);
+void read_eeprom_task(void *param);
 
 int main() {
     stdio_init_all();
     std::cout << "Booting..." << std::endl;
-    
+
+    lock = xSemaphoreCreateMutex();
 
     shared_uart uart_i; // {std::make_shared<Uart_instance>(UART_NR, UART_BAUD, UART_TX_PIN, UART_RX_PIN, 2)};
     shared_modbus mbctrl; // {std::make_shared<ModbusCtrl>(uart_i)};
     shared_i2c i2c_i; //{std::make_shared<PicoI2C>(I2C_NR)};
 
     auto registry = std::make_shared<DeviceRegistry>(); // {mbctrl, i2c_i};
+
+    eeprom_init_i2c(i2c0, 1000000, 5);
+    LogHandler logHandler;
 
     hw_setup_params hw_params{uart_i, mbctrl, i2c_i, registry};
     sub_setup_params sub_params{registry};
@@ -65,9 +75,10 @@ int main() {
 
     ConnectionHandler connHandler = ConnectionHandler();
 
+    xTaskCreate(write_eeprom_task, "write_eeprom_task", 512, &logHandler, tskIDLE_PRIORITY + 1, nullptr);
+    xTaskCreate(read_eeprom_task, "read_eeprom_task", 512, &logHandler, tskIDLE_PRIORITY + 1, nullptr);
 
-
-    xTaskCreate(test_task, "test", 1024, (void*) &connHandler, TASK_PRIORITY_LOW, nullptr);
+    //xTaskCreate(test_task, "test", 1024, (void*) &connHandler, TASK_PRIORITY_LOW, nullptr);
 
     vTaskStartScheduler();
 
@@ -136,4 +147,41 @@ void test_task(void *param) {
 
     xQueueSend(sendQueue, &msg, QUEUE_TIMEOUT);
     vTaskDelete(NULL);
+}
+
+void write_eeprom_task(void *param) {
+    float aa = 12.5f, bb = 100.5f, cc = 12.12f;
+    for (;;) {
+        if (lock != nullptr) {
+            if (xSemaphoreTake(lock, (TickType_t) 10) == pdTRUE) {
+                auto *logHandler = static_cast<LogHandler *>(param);
+                logHandler->storeData(&aa, &bb, &cc, 127);
+                //DEBUG_printf("\n write successful??? \n\n");
+
+                xSemaphoreGive(lock);
+                vTaskDelay(pdMS_TO_TICKS(1000));
+            }
+        }
+    }
+}
+
+void read_eeprom_task(void *param) {
+    float aa, bb, cc;
+    int16_t gg;
+    int arr[4] = {0, 0, 0, 0};
+
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    if (lock != nullptr) {
+        if (xSemaphoreTake(lock, (TickType_t) 10) == pdTRUE) {
+            auto *logHandler = static_cast<LogHandler *>(param);
+            logHandler->fetchCredentials(&aa, &bb, &cc, &gg, arr);
+
+            DEBUG_printf("\n%f \n"
+             "%f \n"
+             "%f \n"
+             "%d \n", aa, bb, cc, gg);
+            xSemaphoreGive(lock);
+            vTaskSuspend(nullptr);
+        }
+    }
 }
