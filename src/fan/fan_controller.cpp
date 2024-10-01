@@ -3,6 +3,7 @@
 
 FanController::FanController(QueueHandle_t fan_speed_q, uint32_t prev_co2_target) : speed_queue(fan_speed_q) {
     this->reading_queue = xQueueCreate(5, sizeof(Reading));
+    this->write_queue = xQueueCreate(5, sizeof(Command));
     this->co2_target.u32 = prev_co2_target;
 
     xTaskCreate(fan_control_task, "FanController", 512, this, TASK_PRIORITY_MEDIUM, NULL);
@@ -10,10 +11,12 @@ FanController::FanController(QueueHandle_t fan_speed_q, uint32_t prev_co2_target
 
 QueueHandle_t FanController::get_reading_queue_handle() const { return reading_queue; }
 
+QueueHandle_t FanController::get_write_queue_handle() const { return write_queue; }
+
 void FanController::fan_control() {
     for (;;) {
         Reading reading;
-        if (xQueueReceive(reading_queue, &reading, pdMS_TO_TICKS(100))) {
+        if (xQueueReceive(reading_queue, &reading, pdMS_TO_TICKS(10))) {
             if (reading.type == ReadingType::CO2) {
                 co2 = reading.value.f32;
             } else if (reading.type == ReadingType::FAN_COUNTER) {
@@ -22,13 +25,26 @@ void FanController::fan_control() {
             }
         }
 
+        Command command; // TODO: If we decide to do automatic mode only then we can change this
+        if (xQueueReceive(write_queue, &command, pdMS_TO_TICKS(10))) {
+            if (command.type == WriteType::CO2_TARGET) {
+                co2_target.f32 = reading.value.f32;
+            } else if (command.type == WriteType::FAN_SPEED && manual_mode) {
+                set_speed(command.value.u32);
+            }
+        }
+
         if (co2 >= CO2_CRITICAL) {
             speed = FAN_MAX;
             set_speed(speed);
-        } else if (co2 > co2_target.f32) { // Probably need some tolerance value for these
+        } else if (co2 - 50 > co2_target.f32) { // Probably need some tolerance value for these
             // TODO: Some automagic adjustments
-        } else if (co2 < co2_target.f32) {
+            speed = 700;
+            set_speed(speed); // tmp
+        } else if (co2 + 50 < co2_target.f32) {
             // TODO: Some automagic adjustments
+            speed = 300;
+            set_speed(speed); // tmp
         }
 
         vTaskDelay(pdMS_TO_TICKS(1000));
@@ -47,3 +63,37 @@ void FanController::is_fan_spinning(const uint16_t &new_count) {
 }
 
 float FanController::distance_to_target() const { return co2_target.f32 - co2; }
+
+FanSpeedReadHandler::FanSpeedReadHandler() {
+    this->reading = {ReadingType::FAN_SPEED, {0}};
+    xTaskCreate(read_fan_speed_task, "FanSpeedReadHandler", 256, this, TASK_PRIORITY_MEDIUM, NULL);
+}
+
+void FanSpeedReadHandler::get_reading() {
+    reading.value.u16 = fanctrl->get_speed(); 
+}
+
+void FanSpeedReadHandler::read_fan_speed() {
+    for (;;) {
+        get_reading();
+        send_reading();
+        vTaskDelay(pdMS_TO_TICKS(reading_interval));
+    }
+}
+
+CO2TargetReadHandler::CO2TargetReadHandler() {
+    this->reading = {ReadingType::CO2_TARGET, {0}};
+    xTaskCreate(read_co2_target_task, "CO2TargetReadHandler", 256, this, TASK_PRIORITY_MEDIUM, NULL);
+}
+
+void CO2TargetReadHandler::get_reading() {
+    reading.value.f32 = fanctrl->get_co2_target();
+}
+
+void CO2TargetReadHandler::read_co2_target() {
+    for (;;) {
+        get_reading();
+        send_reading();
+        vTaskDelay(pdMS_TO_TICKS(reading_interval));
+    }
+}

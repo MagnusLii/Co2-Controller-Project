@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 
-enum class ReadingType { CO2, TEMPERATURE, REL_HUMIDITY, FAN_COUNTER, PRESSURE, UNSET };
+enum class ReadingType { CO2, CO2_TARGET, TEMPERATURE, REL_HUMIDITY, FAN_COUNTER, FAN_SPEED, PRESSURE, UNSET };
 
 enum class WriteType { CO2_TARGET, FAN_SPEED, UNSET };
 
@@ -30,9 +30,19 @@ struct Reading {
     } value;
 };
 
+// TODO: Pretty sure we need to implement something like this if we want a manual fan speed adjust mode in addition to the required CO2 target based mode
+struct Command {
+    WriteType type;
+    union {
+        uint32_t u32; // Fan speed?
+        float f32; // CO2 target
+    } value;
+};
+
 class RegisterHandler {
   public:
     virtual ~RegisterHandler() = default;
+    std::string get_name();
 
   protected:
     std::string name;
@@ -44,13 +54,12 @@ class ReadRegisterHandler : public RegisterHandler {
     void remove_subscriber(QueueHandle_t subscriber);
     void send_reading();
     [[nodiscard]] ReadingType get_type() const;
-    std::string get_name();
     virtual void get_reading() = 0;
 
   protected:
     Reading reading{ReadingType::UNSET, {0}};
 
-    const uint16_t reading_interval = 2000; // ms
+    const uint16_t reading_interval = 1000; // ms
 
   private:
     std::vector<QueueHandle_t> subscribers;
@@ -58,7 +67,7 @@ class ReadRegisterHandler : public RegisterHandler {
 
 class ModbusReadHandler final : public ReadRegisterHandler {
   public:
-    ModbusReadHandler(shared_modbus client, uint8_t device_address, uint16_t register_address,
+    ModbusReadHandler(shared_modbus controller, uint8_t device_address, uint16_t register_address,
                       uint8_t nr_of_registers, bool holding_register, ReadingType type,
                       const std::string& name = "ModbusReadHandler");
     void get_reading() override;
@@ -79,7 +88,6 @@ class WriteRegisterHandler : public RegisterHandler {
   public:
     [[nodiscard]] QueueHandle_t get_write_queue_handle() const;
     virtual void write_to_reg(uint32_t value) = 0;
-    std::string get_name();
 
   protected:
     QueueHandle_t write_queue = nullptr;

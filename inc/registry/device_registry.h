@@ -30,7 +30,7 @@ class DeviceRegistry { // Maybe rename to something something
 
     shared_modbus mbctrl;
     shared_i2c i2c;
-    std::unique_ptr<FanController> fanctrl;
+    std::shared_ptr<FanController> fanctrl;
     std::map<ReadingType, std::shared_ptr<ReadRegisterHandler>> read_handlers;
     std::map<WriteType, std::shared_ptr<WriteRegisterHandler>> write_handlers;
 };

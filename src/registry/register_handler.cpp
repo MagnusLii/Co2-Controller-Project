@@ -6,6 +6,8 @@
 #include <iostream>
 #include <ostream>
 
+std::string RegisterHandler::get_name() { return name; }
+
 // Add a subscribers queue handle to the send list (vector)
 void ReadRegisterHandler::add_subscriber(QueueHandle_t subscriber) {
     subscribers.push_back(subscriber);
@@ -27,13 +29,11 @@ void ReadRegisterHandler::send_reading() {
 
 ReadingType ReadRegisterHandler::get_type() const { return reading.type; }
 
-std::string ReadRegisterHandler::get_name() { return name; }
-
-ModbusReadHandler::ModbusReadHandler(shared_modbus client, const uint8_t device_address,
+ModbusReadHandler::ModbusReadHandler(shared_modbus controller, const uint8_t device_address,
                                      const uint16_t register_address, const uint8_t nr_of_registers,
                                      const bool holding_register, const ReadingType type, const std::string& name)
-    : reg(client, device_address, register_address, nr_of_registers, holding_register) {
-    this->controller = client; // <- I wasted so much time because of this damn thing
+    : reg(controller, device_address, register_address, nr_of_registers, holding_register) {
+    this->controller = controller; // <- I wasted so much time because of this damn thing
     this->reading.type = type;
     this->name = name;
 
@@ -82,7 +82,7 @@ void ModbusWriteHandler::write_to_reg(uint32_t value) {
 }
 
 // Main modbus register write task
-// Waits for someone to send value to the queue
+// Waits for someone to send a value to the queue
 void ModbusWriteHandler::mb_write() {
     uint32_t received_value = 0;
 
@@ -94,8 +94,6 @@ void ModbusWriteHandler::mb_write() {
         }
     }
 }
-
-std::string WriteRegisterHandler::get_name() { return name; }
 
 // I2CHandler - read only for now (I don't think we need to write?)
 I2CHandler::I2CHandler(shared_i2c i2c_i, const uint8_t device_address, const ReadingType rtype,
