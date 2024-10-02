@@ -3,7 +3,7 @@
 
 #include "device_registry.h"
 #include "register_handler.h"
-#include "HardwareConst.h"
+#include "hardware_const.h"
 #include "hardware/gpio.h"
 #include "hardware/timer.h"
 #include "pico/stdlib.h"

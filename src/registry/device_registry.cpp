@@ -1,5 +1,5 @@
 #include "device_registry.h"
-#include "HardwareConst.hpp"
+#include "hardware_const.h"
 #include "fan_controller.h"
 #include "register_handler.h"
 #include "task_defines.h"
