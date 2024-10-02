@@ -20,6 +20,9 @@
 #include "api_tasks.h"
 #include "task_defines.h"
 
+#include "screen.hpp"
+#include "rotary.hpp"
+
 #include <cstdint>
 #include <iostream>
 #include <climits>
@@ -32,12 +35,13 @@ struct hw_setup_params {
     shared_modbus modbus;
     shared_i2c i2c;
     std::shared_ptr<DeviceRegistry> registry;
+    std::shared_ptr<Screen> screen;
+    std::shared_ptr<Rotary> rotary;
 };
 
 struct sub_setup_params {
     std::shared_ptr<DeviceRegistry> registry;
     ConnectionHandler* connection_handler;
-
 };
 
 void setup_task(void *pvParameters);
@@ -47,28 +51,26 @@ void test_task(void *param);
 int main() {
     stdio_init_all();
     std::cout << "Booting..." << std::endl;
+
+
     
 
     shared_uart uart_i; // {std::make_shared<Uart_instance>(UART_NR, UART_BAUD, UART_TX_PIN, UART_RX_PIN, 2)};
     shared_modbus mbctrl; // {std::make_shared<ModbusCtrl>(uart_i)};
     shared_i2c i2c_i; //{std::make_shared<PicoI2C>(I2C_NR)};
-
     auto registry = std::make_shared<DeviceRegistry>(); // {mbctrl, i2c_i};
 
-    hw_setup_params hw_params{uart_i, mbctrl, i2c_i, registry};
-    sub_setup_params sub_params{registry};
-
+    std::shared_ptr<Screen> screen;
+    std::shared_ptr<Rotary> rotary;
+    hw_setup_params hw_params{uart_i, mbctrl, i2c_i, registry, screen, rotary};
+    sub_setup_params sub_params{registry, NULL, screen};
     xTaskCreate(setup_task, "setup_task", 512, &hw_params, tskIDLE_PRIORITY + 5, nullptr);
-    xTaskCreate(subscriber_setup_task, "subscriber_setup_task", 512, &sub_params, tskIDLE_PRIORITY + 3, nullptr);
+    // xTaskCreate(subscriber_setup_task, "subscriber_setup_task", 512, &sub_params, tskIDLE_PRIORITY + 3, nullptr);
 
-    sendQueue = xQueueCreate(SEND_QUEUE_SIZE, sizeof(Message));
-    receiveQueue = xQueueCreate(RECEIVE_QUEUE_SIZE, sizeof(Message));
-
-    ConnectionHandler connHandler = ConnectionHandler();
-
-
-
-    xTaskCreate(test_task, "test", 1024, (void*) &connHandler, TASK_PRIORITY_LOW, nullptr);
+    // sendQueue = xQueueCreate(SEND_QUEUE_SIZE, sizeof(Message));
+    // receiveQueue = xQueueCreate(RECEIVE_QUEUE_SIZE, sizeof(Message));
+    // ConnectionHandler connHandler = ConnectionHandler();
+    // xTaskCreate(test_task, "test", 1024, (void*) &connHandler, TASK_PRIORITY_LOW, nullptr);
 
     vTaskStartScheduler();
 
@@ -82,6 +84,13 @@ void setup_task(void *pvParameters) {
     params->modbus = std::make_shared<ModbusCtrl>(params->uart);
     params->i2c = std::make_shared<PicoI2C>(I2C_NR);
     params->registry->add_shared(params->modbus, params->i2c);
+
+    params->screen = std::make_shared<Screen>(params->i2c);
+    params->rotary = std::make_shared<Rotary>();
+    // params->registry->subscribe_to_handler(ReadingType::CO2, params->screen->get_queue_handle());
+
+    sub_setup_params sub_params{params->registry, NULL, params->screen, params->rotary};
+    xTaskCreate(subscriber_setup_task, "subscriber_setup_task", 512, &sub_params, tskIDLE_PRIORITY + 3, nullptr);
 
     vTaskSuspend(nullptr);
 }
@@ -101,6 +110,9 @@ void subscriber_setup_task(void *pvParameters) {
     //params->registry->subscribe_to_handler(ReadingType::FAN_COUNTER, subscriber4->get_queue_handle());
     //params->registry->subscribe_to_handler(ReadingType::PRESSURE, subscriber5->get_queue_handle());
     //params->registry->subscribe_to_all(subscriber->get_queue_handle());
+
+    params->registry->subscribe_to_all(params->screen->get_queue_handle());
+    params->rotary->add_subscriber(params->screen->get_queue_handle());
 
     auto connHandler = static_cast<ConnectionHandler*>(params->connection_handler);
     xTaskCreate(fully_initialize_connhandler_task, "init IPStack", 1024, (void *) &connHandler, TASK_PRIORITY_ABSOLUTE, nullptr);

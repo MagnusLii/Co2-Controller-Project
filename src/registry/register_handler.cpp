@@ -27,6 +27,13 @@ void ReadRegisterHandler::send_reading() {
     }
 }
 
+void ReadRegisterHandler::send_reading_from_isr() {
+    // std::cout << "Sending reading..." << reading.value.f32 << std::endl;
+    for (const auto subscriber : subscribers) {
+        xQueueSendFromISR(subscriber, &reading, 0);
+    }
+}
+
 ReadingType ReadRegisterHandler::get_type() const { return reading.type; }
 
 ModbusReadHandler::ModbusReadHandler(shared_modbus controller, const uint8_t device_address,

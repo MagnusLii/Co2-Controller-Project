@@ -67,8 +67,8 @@ void tls_test(void) {
         printf("failed to connect\n");
         return;
     }
-    const uint8_t cert_joe[] = TLS_JOES_SERVER;
-    const uint8_t dummy_cert[]={0};
+    // const uint8_t cert_joe[] = TLS_JOES_SERVER;
+    // const uint8_t dummy_cert[]={0};
 
     //bool pass = run_tls_client_test(cert_joe, sizeof(cert_joe), TLS_CLIENT_SERVER, TLS_CLIENT_HTTP_REQUEST, TLS_CLIENT_TIMEOUT_SECS);
     bool pass = run_tls_client_test(NULL, 0, TLS_CLIENT_SERVER, TLS_CLIENT_HTTP_REQUEST, TLS_CLIENT_TIMEOUT_SECS);

@@ -192,9 +192,9 @@ static TLS_CLIENT_T* tls_client_init(void) {
 
     return state;
 }
-static void tlsdebug(void *ctx, int level, const char *file, int line, const char *message){
-    fputs(message, stdout);
-}
+// static void tlsdebug(void *ctx, int level, const char *file, int line, const char *message){
+//     fputs(message, stdout);
+// }
 
 bool run_tls_client_test(const uint8_t *cert, size_t cert_len, const char *server, const char *request, int timeout) {
 

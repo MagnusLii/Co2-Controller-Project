@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 
-enum class ReadingType { CO2, CO2_TARGET, TEMPERATURE, REL_HUMIDITY, FAN_COUNTER, FAN_SPEED, PRESSURE, UNSET };
+enum class ReadingType { CO2, CO2_TARGET, TEMPERATURE, REL_HUMIDITY, FAN_COUNTER, FAN_SPEED, PRESSURE, ROT_SW, CW, CCW, UNSET };
 
 enum class WriteType { CO2_TARGET, FAN_SPEED, UNSET };
 
@@ -53,6 +53,7 @@ class ReadRegisterHandler : public RegisterHandler {
     void add_subscriber(QueueHandle_t subscriber);
     void remove_subscriber(QueueHandle_t subscriber);
     void send_reading();
+    void send_reading_from_isr();
     [[nodiscard]] ReadingType get_type() const;
     virtual void get_reading() = 0;
 
