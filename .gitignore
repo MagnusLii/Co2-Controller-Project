@@ -5,5 +5,5 @@
 build
 cmake-build-*
 connection_defines.h
-test
+test*
 *.log

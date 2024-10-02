@@ -12,6 +12,10 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Structure representing the TLS client state
 typedef struct TLS_CLIENT_T_ {
     struct altcp_pcb *pcb;       // Pointer to the ALT-TCP (Protocol Control Block)
@@ -122,5 +126,9 @@ static void tlsdebug(void *ctx, int level, const char *file, int line, const cha
  * @return true if the test succeeds, false otherwise.
  */
 bool run_tls_client_test(const uint8_t *cert, size_t cert_len, const char *server, const char *request, int timeout);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // TLS_COMMON_H
