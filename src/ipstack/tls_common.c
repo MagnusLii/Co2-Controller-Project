@@ -5,15 +5,15 @@
  */
 
 /* Include necessary libraries */
-#include <string.h>  // String manipulation functions
-#include <time.h>    // Time functions
+#include <string.h> 
+#include <time.h> 
 
 #include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
-#include "lwip/pbuf.h"          // Packet buffer library from LWIP
-#include "lwip/altcp_tcp.h"     // ALTCP (Abstract Lightweight TCP) functions
-#include "lwip/altcp_tls.h"     // TLS wrapper for ALTCP functions
-#include "lwip/dns.h"           // DNS resolver functions
+#include "lwip/pbuf.h"         
+#include "lwip/altcp_tcp.h"     
+#include "lwip/altcp_tls.h"    
+#include "lwip/dns.h"          
 #include "FreeRTOS.h"
 #include "task.h"
 
