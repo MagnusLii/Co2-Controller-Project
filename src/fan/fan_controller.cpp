@@ -1,5 +1,6 @@
 #include "fan_controller.h"
 #include "task_defines.h"
+#include <iostream>
 
 FanController::FanController(QueueHandle_t fan_speed_q, uint32_t prev_co2_target) : speed_queue(fan_speed_q) {
     this->reading_queue = xQueueCreate(5, sizeof(Reading));
@@ -12,6 +13,10 @@ FanController::FanController(QueueHandle_t fan_speed_q, uint32_t prev_co2_target
 QueueHandle_t FanController::get_reading_queue_handle() const { return reading_queue; }
 
 QueueHandle_t FanController::get_write_queue_handle() const { return write_queue; }
+
+uint16_t FanController::get_speed() { return speed; }
+
+float FanController::get_co2_target() { return co2_target.f32; }
 
 void FanController::fan_control() {
     for (;;) {
@@ -64,7 +69,25 @@ void FanController::is_fan_spinning(const uint16_t &new_count) {
 
 float FanController::distance_to_target() const { return co2_target.f32 - co2; }
 
-FanSpeedReadHandler::FanSpeedReadHandler() {
+void FanController::adjust_speed() {
+    float distance = distance_to_target();
+
+    if (abs(distance) < CO2_TOLERANCE) {
+        return;
+    }
+
+    float adjustment = distance * FAN_MAX / CO2_MAX;
+    speed += adjustment / 2;
+    if (speed > FAN_MAX) {
+        speed = FAN_MAX;
+    } else if (speed < FAN_MIN) {
+        speed = FAN_MIN;
+    }
+    //set_speed(speed);
+    std::cout << "Adjusting fan speed to " << speed << std::endl;
+}
+
+FanSpeedReadHandler::FanSpeedReadHandler(std::shared_ptr<FanController> fanctrl) : fanctrl(fanctrl) {
     this->reading = {ReadingType::FAN_SPEED, {0}};
     xTaskCreate(read_fan_speed_task, "FanSpeedReadHandler", 256, this, TASK_PRIORITY_MEDIUM, NULL);
 }
@@ -81,7 +104,7 @@ void FanSpeedReadHandler::read_fan_speed() {
     }
 }
 
-CO2TargetReadHandler::CO2TargetReadHandler() {
+CO2TargetReadHandler::CO2TargetReadHandler(std::shared_ptr<FanController> fanctrl) : fanctrl(fanctrl) {
     this->reading = {ReadingType::CO2_TARGET, {0}};
     xTaskCreate(read_co2_target_task, "CO2TargetReadHandler", 256, this, TASK_PRIORITY_MEDIUM, NULL);
 }

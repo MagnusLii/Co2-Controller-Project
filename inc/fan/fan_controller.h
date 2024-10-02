@@ -8,6 +8,7 @@
 #define CO2_MIN 0
 #define CO2_MAX 1500
 #define CO2_CRITICAL 2000
+#define CO2_TOLERANCE 50
 #define FAN_MIN 0
 #define FAN_MAX 1000
 
@@ -29,6 +30,7 @@ class FanController {
     void set_speed(uint16_t speed);
     void is_fan_spinning(const uint16_t &new_count);
     float distance_to_target() const;
+    void adjust_speed();
 
     QueueHandle_t reading_queue; // Used to receive readings from modbus registers
     QueueHandle_t write_queue; // We receive write requests from other tasks
