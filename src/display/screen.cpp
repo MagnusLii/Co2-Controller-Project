@@ -25,14 +25,22 @@
 
 #define SPEED_FRAME_WIDTH 4 * CHAR_HEIGHT - 2
 #define SPEED_FRAME_HEIGHT SCREEN_HEIGHT - (CHAR_HEIGHT + MARGIN)
+#define SPEED_FRAME_X SCREEN_WIDTH - SPEED_FRAME_WIDTH + 2
+#define SPEED_FRAME_Y 0
+
+#define SPEED_COLUMN_WIDTH SPEED_FRAME_WIDTH - 4
+#define SPEED_COLUMN_HEIGHT SPEED_FRAME_HEIGHT - 4
+#define SPEED_COLUMN_X SPEED_FRAME_X + 2
+#define SPEED_COLUMN_Y SPEED_FRAME_Y + 2
 
 Screen::Screen(std::shared_ptr<PicoI2C> i2c, uint16_t device_address, uint16_t width, uint16_t height)
 : display(std::make_unique<ssd1306os>(i2c, device_address, width, height)),
-  reading_blit_buf(4 * CHAR_HEIGHT, CHAR_HEIGHT) {
+  reading_blit_buf(4 * CHAR_HEIGHT, CHAR_HEIGHT),
+  manual_fanspeed_buf(SPEED_FRAME_WIDTH - 4, SPEED_FRAME_HEIGHT - 4) {
     // display = std::make_unique<ssd1306os>(i2c, device_address, width, height);
     control_queue = xQueueCreate(20, 8); //change size
     vQueueAddToRegistry(control_queue, "SCREEN_QUEUE");
-    xTaskCreate(Screen::screen_task, "SCREEN", 512, this, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(Screen::screen_task, "SCREEN", 512, this, TaskPriority::TASK_PRIORITY_ABSOLUTE, NULL);
 }
 
 QueueHandle_t Screen::get_queue_handle(void) {
@@ -42,11 +50,25 @@ QueueHandle_t Screen::get_queue_handle(void) {
 void Screen::screen_task(void *pvParameters) {
     auto screen = static_cast<Screen *>(pvParameters);
     screen->set_static_shapes();
+    screen->set_manual_fan_speed(45);
     screen->display->show();
     Reading reading;
+    uint16_t fan_speed = 20;
     while (true) {
         xQueueReceive(screen->control_queue, &reading, portMAX_DELAY);
-        screen->set_reading_value(reading);
+        switch (reading.type) {
+        case ReadingType::CW:
+            fan_speed += 1;
+            screen->set_manual_fan_speed(fan_speed);
+            break;
+        case ReadingType::CCW:
+            fan_speed -= 1;
+            screen->set_manual_fan_speed(fan_speed);
+            break;
+        default:
+            screen->set_reading_value(reading);
+            break;
+        }
         screen->display->show();
     }
 }
@@ -58,7 +80,7 @@ void Screen::set_static_shapes(void) {
     display->text("RH:", RH_X, RH_Y);
     display->text("hPa:", HPA_X, HPA_Y);
 
-    display->rect(SCREEN_WIDTH - SPEED_FRAME_WIDTH + 2, 0, SPEED_FRAME_WIDTH, SPEED_FRAME_HEIGHT, 1);
+    display->rect(SPEED_FRAME_X, SPEED_FRAME_Y, SPEED_FRAME_WIDTH, SPEED_FRAME_HEIGHT, 1);
     display->text("100%", SCREEN_WIDTH - 4 * CHAR_HEIGHT, SCREEN_HEIGHT - CHAR_HEIGHT);
 }
 
@@ -95,6 +117,10 @@ void Screen::set_reading_value(Reading &reading) {
     display->blit(reading_blit_buf, READING_X, height); // blit the text
 }
 
-void Screen::set_manual_fan_speed(float percentage) {
-
+void Screen::set_manual_fan_speed(uint16_t percentage) {
+    manual_fanspeed_buf.fill(0);
+    display->blit(manual_fanspeed_buf, SPEED_COLUMN_X, SPEED_COLUMN_Y);
+    uint16_t new_height = percentage;
+    manual_fanspeed_buf.rect(0, SPEED_COLUMN_HEIGHT - new_height, SPEED_COLUMN_WIDTH, new_height, 1, true);
+    display->blit(manual_fanspeed_buf, SPEED_COLUMN_X, SPEED_COLUMN_Y);
 }

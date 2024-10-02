@@ -9,7 +9,7 @@
 #include "register_handler.h"
 
 
-class Rotary {
+class Rotary : public ReadRegisterHandler {
     friend void rotary_irq_handler(uint gpio, uint32_t mask);
     public:
         Rotary(uint ROT_SW = 12, uint ROT_A = 10, uint ROT_B = 11);
@@ -18,6 +18,7 @@ class Rotary {
     private:
         void irq_handler(uint gpio, uint32_t mask);
         bool debounce(void);
+        void get_reading() {}
         const uint rot_sw;
         const uint rot_a;
         const uint rot_b;

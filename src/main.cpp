@@ -21,6 +21,7 @@
 #include "task_defines.h"
 
 #include "screen.hpp"
+#include "rotary.hpp"
 
 #include <cstdint>
 #include <iostream>
@@ -35,12 +36,14 @@ struct hw_setup_params {
     shared_i2c i2c;
     std::shared_ptr<DeviceRegistry> registry;
     std::shared_ptr<Screen> screen;
+    std::shared_ptr<Rotary> rotary;
 };
 
 struct sub_setup_params {
     std::shared_ptr<DeviceRegistry> registry;
     ConnectionHandler* connection_handler;
     std::shared_ptr<Screen> screen;
+    std::shared_ptr<Rotary> rotary;
 };
 
 void setup_task(void *pvParameters);
@@ -60,7 +63,8 @@ int main() {
     auto registry = std::make_shared<DeviceRegistry>(); // {mbctrl, i2c_i};
 
     std::shared_ptr<Screen> screen;
-    hw_setup_params hw_params{uart_i, mbctrl, i2c_i, registry, screen};
+    std::shared_ptr<Rotary> rotary;
+    hw_setup_params hw_params{uart_i, mbctrl, i2c_i, registry, screen, rotary};
     sub_setup_params sub_params{registry, NULL, screen};
     xTaskCreate(setup_task, "setup_task", 512, &hw_params, tskIDLE_PRIORITY + 5, nullptr);
     // xTaskCreate(subscriber_setup_task, "subscriber_setup_task", 512, &sub_params, tskIDLE_PRIORITY + 3, nullptr);
@@ -84,9 +88,10 @@ void setup_task(void *pvParameters) {
     params->registry->add_shared(params->modbus, params->i2c);
 
     params->screen = std::make_shared<Screen>(params->i2c);
+    params->rotary = std::make_shared<Rotary>();
     // params->registry->subscribe_to_handler(ReadingType::CO2, params->screen->get_queue_handle());
 
-    sub_setup_params sub_params{params->registry, NULL, params->screen};
+    sub_setup_params sub_params{params->registry, NULL, params->screen, params->rotary};
     xTaskCreate(subscriber_setup_task, "subscriber_setup_task", 512, &sub_params, tskIDLE_PRIORITY + 3, nullptr);
 
     vTaskSuspend(nullptr);
@@ -108,6 +113,7 @@ void subscriber_setup_task(void *pvParameters) {
     params->registry->subscribe_to_handler(ReadingType::PRESSURE, subscriber5->get_queue_handle());
 
     params->registry->subscribe_to_all(params->screen->get_queue_handle());
+    params->rotary->add_subscriber(params->screen->get_queue_handle());
 
     auto connHandler = static_cast<ConnectionHandler*>(params->connection_handler);
     xTaskCreate(fully_initialize_connhandler_task, "init IPStack", 1024, (void *) &connHandler, TASK_PRIORITY_ABSOLUTE, nullptr);

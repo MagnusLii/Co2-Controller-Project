@@ -25,6 +25,13 @@ void ReadRegisterHandler::send_reading() {
     }
 }
 
+void ReadRegisterHandler::send_reading_from_isr() {
+    // std::cout << "Sending reading..." << reading.value.f32 << std::endl;
+    for (const auto subscriber : subscribers) {
+        xQueueSendFromISR(subscriber, &reading, 0);
+    }
+}
+
 ReadingType ReadRegisterHandler::get_type() const { return reading.type; }
 
 std::string ReadRegisterHandler::get_name() { return name; }

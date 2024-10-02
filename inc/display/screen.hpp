@@ -3,6 +3,7 @@
 
 #include "ssd1306os.h"
 #include "register_handler.h"
+#include "task_defines.h"
 
 #include <map>
 
@@ -14,10 +15,11 @@ class Screen {
         static void screen_task(void *pvParameters);
         void set_static_shapes(void);
         void set_reading_value(Reading &reading);
-        void set_manual_fan_speed(float percentage);
+        void set_manual_fan_speed(uint16_t percentage);
         std::unique_ptr<ssd1306os> display;
         QueueHandle_t control_queue;
         mono_vlsb reading_blit_buf;
+        mono_vlsb manual_fanspeed_buf;
 };
 
 #endif

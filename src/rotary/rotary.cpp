@@ -19,28 +19,34 @@ bool Rotary::debounce(void) {
 
 static Rotary *rotary;
 
-Rotary::Rotary(uint ROT_SW, uint ROT_A, uint ROT_B)
-: rot_sw(ROT_SW), rot_a(ROT_A), rot_b(ROT_B) {
-    rotary = this;
-}
-
-
 void rotary_irq_handler(uint gpio, uint32_t mask) {
     rotary->irq_handler(gpio, mask);
 }
 
+Rotary::Rotary(uint ROT_SW, uint ROT_A, uint ROT_B)
+: rot_sw(ROT_SW), rot_a(ROT_A), rot_b(ROT_B) {
+    rotary = this;
+    gpio_set_irq_enabled_with_callback(rot_sw, GPIO_IRQ_EDGE_FALL, true, rotary_irq_handler);
+    gpio_set_irq_enabled(rot_a, GPIO_IRQ_EDGE_FALL, true);
+    gpio_set_irq_enabled(rot_b, GPIO_IRQ_EDGE_FALL, true);
+}
+
+
 void Rotary::irq_handler(uint gpio, uint32_t mask) {
     if ((gpio == rot_sw) && (mask & GPIO_IRQ_EDGE_FALL)) {
-        if (debounce())
-            ;
-            // send(command rot_sw);
+        if (debounce()) {
+            reading.type = ReadingType::ROT_SW;
+            send_reading_from_isr();
+        }
     } else if ((gpio == rot_a) && (mask & GPIO_IRQ_EDGE_FALL)) {
-            if (gpio_get(rot_b))
-                ;
-                // send(command clockwise);
-            else
-                ;
-                // send(command counterclockwise);
+            if (gpio_get(rot_b)) {
+                reading.type = ReadingType::CW;
+                send_reading_from_isr();
+            } else {
+                reading.type = ReadingType::CCW;
+                send_reading_from_isr();
+            }
     }
 }
+
 
