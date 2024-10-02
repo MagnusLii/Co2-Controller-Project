@@ -114,3 +114,43 @@ std::string TLSWrapper::receive() {
 
     return data;
 }
+
+
+
+err_t TLSWrapper::tcp_client_poll(void *arg, struct tcp_pcb *tpcb) {
+    TLSWrapper* tlsWrapper = static_cast<TLSWrapper*>(arg);
+    // Perform periodic checks, e.g., to handle timeouts or keep-alives
+    return ERR_OK; // or ERR_ABRT to indicate error or disconnection
+}
+
+err_t TLSWrapper::tcp_client_sent(void *arg, struct tcp_pcb *tpcb, u16_t len) {
+    TLSWrapper* tlsWrapper = static_cast<TLSWrapper*>(arg);
+    // Handle the event when data has been successfully sent
+    TLSWRAPPERprintf("Data sent successfully, length: %u\n", len);
+    return ERR_OK;
+}
+
+err_t TLSWrapper::tcp_client_receive(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
+    TLSWrapper* tlsWrapper = static_cast<TLSWrapper*>(arg);
+    if (p == NULL) {
+        // Connection closed by peer
+        tcp_close(tpcb);
+        return ERR_OK;
+    }
+
+    // Process received data from pbuf
+    // Example: Convert pbuf to string and print
+    std::string receivedData((char*)p->payload, p->len);
+    TLSWRAPPERprintf("Received data: %s\n", receivedData.c_str());
+
+    // Free the pbuf
+    pbuf_free(p);
+
+    return ERR_OK; // or an error code if needed
+}
+
+void TLSWrapper::tcp_client_err(void *arg, err_t err) {
+    TLSWrapper* tlsWrapper = static_cast<TLSWrapper*>(arg);
+    // Handle error, possibly log or clean up
+    TLSWRAPPERprintf("TCP error occurred: %d\n", err);
+}
