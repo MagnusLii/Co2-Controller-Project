@@ -26,6 +26,7 @@ void DeviceRegistry::initialize() {
                                                           "Fan Speed Control");
     auto pressure = std::make_shared<I2CHandler>(i2c, 0x40, ReadingType::PRESSURE, "Pressure");
 
+    fanctrl = std::make_shared<FanController>(w_fan_speed->get_write_queue_handle(), 400.0);
     add_register_handler(std::move(co2), ReadingType::CO2);
     add_register_handler(std::move(temp), ReadingType::TEMPERATURE);
     add_register_handler(std::move(hum), ReadingType::REL_HUMIDITY);
@@ -33,7 +34,8 @@ void DeviceRegistry::initialize() {
     add_register_handler(std::move(w_fan_speed), WriteType::FAN_SPEED);
     add_register_handler(std::move(pressure), ReadingType::PRESSURE);
 
-    fanctrl = std::make_shared<FanController>(w_fan_speed->get_write_queue_handle(), 123);
+
+    subscribe_to_handler(ReadingType::CO2, fanctrl->get_reading_queue_handle());
 
     auto r_fan_speed = std::make_shared<FanSpeedReadHandler>(fanctrl);
     auto co2_target = std::make_shared<CO2TargetReadHandler>(fanctrl);

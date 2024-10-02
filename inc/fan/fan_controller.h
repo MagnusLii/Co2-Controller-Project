@@ -14,7 +14,7 @@
 
 class FanController {
   public:
-    FanController(QueueHandle_t fan_speed_q, uint32_t prev_co2_target);
+    FanController(QueueHandle_t fan_speed_q, float prev_co2_target);
     [[nodiscard]] QueueHandle_t get_reading_queue_handle() const;
     [[nodiscard]] QueueHandle_t get_write_queue_handle() const;
     uint16_t get_speed();

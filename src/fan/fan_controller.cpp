@@ -2,10 +2,10 @@
 #include "task_defines.h"
 #include <iostream>
 
-FanController::FanController(QueueHandle_t fan_speed_q, uint32_t prev_co2_target) : speed_queue(fan_speed_q) {
+FanController::FanController(QueueHandle_t fan_speed_q, float prev_co2_target) : speed_queue(fan_speed_q) {
     this->reading_queue = xQueueCreate(5, sizeof(Reading));
     this->write_queue = xQueueCreate(5, sizeof(Command));
-    this->co2_target.u32 = prev_co2_target;
+    this->co2_target.f32 = prev_co2_target;
 
     xTaskCreate(fan_control_task, "FanController", 512, this, TASK_PRIORITY_MEDIUM, NULL);
 }
@@ -19,6 +19,8 @@ uint16_t FanController::get_speed() { return speed; }
 float FanController::get_co2_target() { return co2_target.f32; }
 
 void FanController::fan_control() {
+    speed = 1000;
+    set_speed(1000);
     for (;;) {
         Reading reading;
         if (xQueueReceive(reading_queue, &reading, pdMS_TO_TICKS(10))) {
@@ -42,14 +44,8 @@ void FanController::fan_control() {
         if (co2 >= CO2_CRITICAL) {
             speed = FAN_MAX;
             set_speed(speed);
-        } else if (co2 - 50 > co2_target.f32) { // Probably need some tolerance value for these
-            // TODO: Some automagic adjustments
-            speed = 700;
-            set_speed(speed); // tmp
-        } else if (co2 + 50 < co2_target.f32) {
-            // TODO: Some automagic adjustments
-            speed = 300;
-            set_speed(speed); // tmp
+        } else {
+            adjust_speed(); // tmp
         }
 
         vTaskDelay(pdMS_TO_TICKS(1000));
@@ -83,7 +79,7 @@ void FanController::adjust_speed() {
     } else if (speed < FAN_MIN) {
         speed = FAN_MIN;
     }
-    //set_speed(speed);
+    set_speed(speed);
     std::cout << "Adjusting fan speed to " << speed << std::endl;
 }
 
