@@ -1,15 +1,16 @@
 #include "device_registry.h"
 #include "fan_controller.h"
 #include "register_handler.h"
+#include "task_defines.h"
 
 DeviceRegistry::DeviceRegistry() {
-    xTaskCreate(initialize_task, "initialize_registry", 512, this, tskIDLE_PRIORITY + 4, NULL);
+    xTaskCreate(initialize_task, "initialize_registry", 512, this, TASK_PRIORITY_ABSOLUTE, nullptr);
 }
 
 // Add shared pointers to the registry
-void DeviceRegistry::add_shared(shared_modbus sh_mb, shared_i2c sh_i2c) {
-    mbctrl = sh_mb;
-    i2c = sh_i2c;
+void DeviceRegistry::add_shared(shared_modbus mbctrl, shared_i2c i2c_i) {
+    this->mbctrl = mbctrl;
+    this->i2c = i2c_i;
 }
 
 // Setup task to create register handlers and add them to the registry
@@ -27,13 +28,13 @@ void DeviceRegistry::initialize() {
     auto pressure = std::make_shared<I2CHandler>(i2c, 0x40, ReadingType::PRESSURE, "Pressure");
 
     fanctrl = std::make_shared<FanController>(w_fan_speed->get_write_queue_handle(), 400.0);
+
     add_register_handler(std::move(co2), ReadingType::CO2);
     add_register_handler(std::move(temp), ReadingType::TEMPERATURE);
     add_register_handler(std::move(hum), ReadingType::REL_HUMIDITY);
     add_register_handler(std::move(fan_counter), ReadingType::FAN_COUNTER);
-    add_register_handler(std::move(w_fan_speed), WriteType::FAN_SPEED);
     add_register_handler(std::move(pressure), ReadingType::PRESSURE);
-
+    add_register_handler(std::move(w_fan_speed), WriteType::FAN_SPEED);
 
     subscribe_to_handler(ReadingType::CO2, fanctrl->get_reading_queue_handle());
 
@@ -61,10 +62,13 @@ void DeviceRegistry::subscribe_to_handler(const ReadingType type, QueueHandle_t 
 QueueHandle_t DeviceRegistry::get_write_queue_handle(const WriteType type) {
     if (write_handlers.find(type) != write_handlers.end()) {
         std::cout << "Subscriber given handle to " << write_handlers[type]->get_name() << std::endl;
-        if (type == WriteType::FAN_SPEED || type == WriteType::CO2_TARGET) { // TODO: these are technically right now the only write handlers
-            return fanctrl->get_write_queue_handle();
-        } else { // TODO: so this is not really necessary at all rn
-            return write_handlers[type]->get_write_queue_handle();
+        switch (type) {
+            case WriteType::FAN_SPEED:
+            case WriteType::CO2_TARGET:
+                return fanctrl->get_write_queue_handle();
+                break;
+            default:
+                return write_handlers[type]->get_write_queue_handle();
         }
     }
     std::cout << "Handler not found" << std::endl;
@@ -111,12 +115,12 @@ void DeviceRegistry::add_register_handler(std::shared_ptr<WriteRegisterHandler> 
 //
 TestSubscriber::TestSubscriber() {
     receiver = xQueueCreate(10, sizeof(Reading));
-    xTaskCreate(receive_task, "Receive Task", 256, this, tskIDLE_PRIORITY + 2, nullptr);
+    xTaskCreate(receive_task, "Receive Task", 256, this, TASK_PRIORITY_MEDIUM, nullptr);
 }
 
 TestSubscriber::TestSubscriber(const std::string &name) : name(name) {
     receiver = xQueueCreate(10, sizeof(Reading));
-    xTaskCreate(receive_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 2, nullptr);
+    xTaskCreate(receive_task, name.c_str(), 256, this, TASK_PRIORITY_MEDIUM, nullptr);
 }
 
 void TestSubscriber::receive() {
@@ -146,16 +150,17 @@ TestWriter::TestWriter(const std::string &name, QueueHandle_t handle) {
     this->name = name;
     this->send_handle = handle;
 
-    xTaskCreate(send_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 2, nullptr);
+    xTaskCreate(send_task, name.c_str(), 256, this, TASK_PRIORITY_MEDIUM, nullptr);
 }
 
 void TestWriter::add_send_handle(QueueHandle_t handle) { send_handle = handle; }
 
 void TestWriter::send() const {
-    uint32_t msg = 400;
+    Command cmd{WriteType::CO2_TARGET, {0}};
+    cmd.value.f32 = 800;
     for (;;) {
-        xQueueSend(send_handle, &msg, 0);
-        msg = 0;
+        xQueueSend(send_handle, &cmd, 0);
+        cmd.value.f32 = 0;
         vTaskDelay(pdMS_TO_TICKS(10000));
     }
 }

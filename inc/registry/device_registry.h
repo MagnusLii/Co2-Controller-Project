@@ -14,7 +14,7 @@
 class DeviceRegistry { // Maybe rename to something something
   public:
     DeviceRegistry();
-    void add_shared(shared_modbus sh_mb, shared_i2c sh_i2c);
+    void add_shared(shared_modbus mbctrl, shared_i2c i2c_i);
     void subscribe_to_handler(ReadingType type, QueueHandle_t receiver);
     QueueHandle_t get_write_queue_handle(WriteType type);
     void subscribe_to_all(QueueHandle_t receiver);
@@ -62,7 +62,6 @@ public:
 
 private:
     void send() const;
-
     static void send_task(void *pvParameters) {
         const auto *writer = static_cast<TestWriter *>(pvParameters);
         writer->send();

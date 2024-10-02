@@ -67,7 +67,7 @@ int main() {
     std::shared_ptr<Rotary> rotary;
     hw_setup_params hw_params{uart_i, mbctrl, i2c_i, registry, screen, rotary};
     //sub_setup_params sub_params{registry, NULL, screen};
-    xTaskCreate(setup_task, "setup_task", 512, &hw_params, tskIDLE_PRIORITY + 5, nullptr);
+    xTaskCreate(setup_task, "setup_task", 512, &hw_params, TASK_PRIORITY_ABSOLUTE + 1, nullptr);
     // xTaskCreate(subscriber_setup_task, "subscriber_setup_task", 512, &sub_params, tskIDLE_PRIORITY + 3, nullptr);
 
     // sendQueue = xQueueCreate(SEND_QUEUE_SIZE, sizeof(Message));
@@ -83,9 +83,9 @@ int main() {
 
 void setup_task(void *pvParameters) {
     const auto params = static_cast<hw_setup_params*>(pvParameters);
-    params->uart = std::make_shared<Uart_instance>(UART_NR, UART_BAUD, UART_TX_PIN, UART_RX_PIN, 2);
+    params->uart = std::make_shared<Uart_instance>(UART_NR, UART_BAUD, UART_TX_PIN, UART_RX_PIN, UART_BITS);
     params->modbus = std::make_shared<ModbusCtrl>(params->uart);
-    params->i2c = std::make_shared<PicoI2C>(I2C_NR);
+    params->i2c = std::make_shared<PicoI2C>(I2C_1);
     params->registry->add_shared(params->modbus, params->i2c);
 
     params->screen = std::make_shared<Screen>(params->i2c);
@@ -93,7 +93,7 @@ void setup_task(void *pvParameters) {
     // params->registry->subscribe_to_handler(ReadingType::CO2, params->screen->get_queue_handle());
 
     sub_setup_params sub_params{params->registry, NULL, params->screen, params->rotary};
-    xTaskCreate(subscriber_setup_task, "subscriber_setup_task", 512, &sub_params, tskIDLE_PRIORITY + 3, nullptr);
+    xTaskCreate(subscriber_setup_task, "subscriber_setup_task", 512, &sub_params, TASK_PRIORITY_HIGH, nullptr);
 
     vTaskSuspend(nullptr);
 }
@@ -106,7 +106,7 @@ void subscriber_setup_task(void *pvParameters) {
     auto subscriber3 = std::make_shared<TestSubscriber>("Humidity");
     auto subscriber4 = std::make_shared<TestSubscriber>("Fan counter");
     auto subscriber5 = std::make_shared<TestSubscriber>("Pressure");
-    //auto writer = std::make_shared<TestWriter>("Fan speed", params->registry->get_write_queue_handle(WriteType::FAN_SPEED));
+    auto writer = std::make_shared<TestWriter>("Fan speed", params->registry->get_write_queue_handle(WriteType::FAN_SPEED));
     params->registry->subscribe_to_handler(ReadingType::CO2, subscriber->get_queue_handle());
     //params->registry->subscribe_to_handler(ReadingType::TEMPERATURE, subscriber2->get_queue_handle());
     //params->registry->subscribe_to_handler(ReadingType::REL_HUMIDITY, subscriber3->get_queue_handle());
