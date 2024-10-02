@@ -9,13 +9,13 @@
 #include "pressure_register.h"
 #include "queue.h"
 #include "timers.h"
-#include "uart_instance.h"
 
 #include <algorithm>
 #include <string>
 #include <vector>
 
 enum class ReadingType {
+    UNSET,
     CO2,
     CO2_TARGET,
     TEMPERATURE,
@@ -25,18 +25,21 @@ enum class ReadingType {
     PRESSURE,
     ROT_SW,
     CW,
-    CCW,
-    UNSET
+    CCW
 };
 
-enum class WriteType { CO2_TARGET, FAN_SPEED, UNSET };
+enum class WriteType {
+    UNSET,
+    CO2_TARGET,
+    FAN_SPEED
+};
 
 struct Reading {
     ReadingType type;
     union {
         uint32_t u32; // Float readings get initially pulled as uint32_t
         float f32;    // CO2, CO2 target, Temperature, Humidity
-        int32_t i32;
+        int32_t i32;  // Probably not used
         uint16_t u16; // Fan speed, Fan counter
         int16_t i16;  // Pressure
     } value;
@@ -79,8 +82,9 @@ class ReadRegisterHandler : public RegisterHandler {
 
 class ModbusReadHandler final : public ReadRegisterHandler {
   public:
-    ModbusReadHandler(shared_modbus controller, uint8_t device_address, uint16_t register_address,
-                      uint8_t nr_of_registers, bool holding_register, ReadingType type,
+    ModbusReadHandler(shared_modbus controller, uint8_t device_address,
+                      uint16_t register_address, uint8_t nr_of_registers,
+                      bool holding_register, ReadingType type,
                       const std::string &name = "ModbusReadHandler");
 
   private:
@@ -109,8 +113,9 @@ class WriteRegisterHandler : public RegisterHandler {
 
 class ModbusWriteHandler : public WriteRegisterHandler {
   public:
-    ModbusWriteHandler(shared_modbus controller, uint8_t device_address, uint16_t register_address,
-                       uint8_t nr_of_registers, WriteType type,
+    ModbusWriteHandler(shared_modbus controller, uint8_t device_address,
+                       uint16_t register_address, uint8_t nr_of_registers,
+                       WriteType type,
                        const std::string &name = "ModbusWriteHandler");
 
   private:
@@ -128,7 +133,8 @@ class ModbusWriteHandler : public WriteRegisterHandler {
 
 class I2CHandler final : public ReadRegisterHandler {
   public:
-    I2CHandler(shared_i2c i2c_i, uint8_t device_address, ReadingType rtype = ReadingType::UNSET,
+    I2CHandler(shared_i2c i2c_i, uint8_t device_address,
+               ReadingType rtype = ReadingType::UNSET,
                const std::string &name = "I2CHandler");
 
   private:
@@ -141,7 +147,8 @@ class I2CHandler final : public ReadRegisterHandler {
     }
 
     shared_i2c i2c;
-    PressureRegister reg; // Only I2C dev reg we have so lets go and just specify it
+    // Only I2C dev reg we have so lets go and just specify it for now
+    PressureRegister reg;
 };
 
 #endif /* REGISTERHANDLER_H_ */

@@ -4,7 +4,8 @@
 #include <iostream>
 #include <ostream>
 
-PressureRegister::PressureRegister(shared_i2c i2c, const uint8_t device_address): i2c(i2c) {
+PressureRegister::PressureRegister(shared_i2c i2c, const uint8_t device_address)
+    : i2c(i2c) {
     this->payload = READ_DIFF_CODE;
     this->devaddr = device_address;
 

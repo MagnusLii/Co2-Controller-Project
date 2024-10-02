@@ -5,12 +5,12 @@
 
 #include <memory>
 
-#define CO2_MIN 0
-#define CO2_MAX 1500
-#define CO2_CRITICAL 2000
+#define CO2_MIN       0
+#define CO2_MAX       1500
+#define CO2_CRITICAL  2000
 #define CO2_TOLERANCE 50
-#define FAN_MIN 0
-#define FAN_MAX 1000
+#define FAN_MIN       0
+#define FAN_MAX       1000
 
 class FanController {
   public:
@@ -32,10 +32,10 @@ class FanController {
     float distance_to_target() const;
     void adjust_speed();
 
-    QueueHandle_t reading_queue; // Used to receive readings from modbus registers
-    QueueHandle_t write_queue;   // We receive write requests from other tasks
-    QueueHandle_t
-        speed_queue; // This is where we send the fan speed changes - Fan Speed RegisterHandler
+    QueueHandle_t reading_queue; // Receive readings from modbus registers
+    QueueHandle_t write_queue;   // Receive write requests from other tasks
+    QueueHandle_t speed_queue; // This is where we send the fan speed changes -
+                               // Fan Speed RegisterHandler
     uint16_t speed = 0;
     uint16_t counter = 0;
     float co2 = 0.0;
