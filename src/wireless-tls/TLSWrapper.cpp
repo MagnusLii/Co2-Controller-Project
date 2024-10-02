@@ -16,6 +16,24 @@
 #include "lwip/altcp_tls.h"
 
 
+TLSWrapper::TLSWrapper(const char *ssid, const char *pw, const char* certificate, const int certlen, const uint32_t countryCode = CYW43_COUNTRY_FINLAND) {
+        this->certificate = certificate;
+        this->certificateLength = certlen;
+
+        TLSWRAPPERprintf("TLSWrapper::TLSWrapper: Initializing TLSWrapper\n");
+        if (cyw43_arch_init_with_country(countryCode) != 0) {
+            TLSWRAPPERprintf("TLSWrapper::TLSWrapper: failed init\n");
+        }
+        cyw43_arch_enable_sta_mode();
+
+        TLSWRAPPERprintf("TLSWrapper::TLSWrapper: Connecting to wireless\n");
+        if (cyw43_arch_wifi_connect_timeout_ms(ssid, password, CYW43_AUTH_WPA2_AES_PSK, CONNECTION_TIMEOUT_MS) != 0) {
+            TLSWRAPPERprintf("TLSWrapper::TLSWrapper: failed to connect\n");
+        } else {
+            TLSWRAPPERprintf("TLSWrapper::TLSWrapper: connected\n");
+        }
+    }
+
 TLSWrapper::ConnectionStatus TLSWrapper::connect(const std::string& hostname, int port) {
     // Initialize TLS configuration
     tls_config = altcp_tls_create_config_client(certificate, certificateLength);

@@ -35,7 +35,7 @@ public:
         ERROR
     };
 
-    TLSWrapper(const char *ssid, const char *pw, const uint32_t countryCode = CYW43_COUNTRY_FINLAND);
+    TLSWrapper(const char *ssid, const char *pw, const char* certificate, const int certlen, const uint32_t countryCode = CYW43_COUNTRY_FINLAND);
 
     ConnectionStatus connect(const std::string& hostname, int port);
 
@@ -44,8 +44,8 @@ public:
 
 private:
     ConnectionStatus connectionStatus;
-    const char certificate[] = TLS_CERTIFICATE;
-    int certificateLength;
+    const char certificate[];
+    const int certificateLength;
 
     // TCP connection details
     struct tcp_pcb* tcp_pcb;
