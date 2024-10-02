@@ -42,13 +42,10 @@ public:
     int send(const std::string& data);
     std::string receive();
 
-    r
-
 private:
     ConnectionStatus connectionStatus;
     const char certificate[] = TLS_CERTIFICATE;
     int certificateLength;
-    ConnectionStatus connectionStatus;
 
     // TCP connection details
     struct tcp_pcb* tcp_pcb;
