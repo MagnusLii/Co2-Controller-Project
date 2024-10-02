@@ -7,3 +7,4 @@ cmake-build-*
 connection_defines.h
 test*
 *.log
+*copy*
