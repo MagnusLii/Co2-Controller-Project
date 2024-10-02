@@ -63,7 +63,7 @@ void FanController::is_fan_spinning(const uint16_t &new_count) {
     }
 }
 
-float FanController::distance_to_target() const { return co2_target.f32 - co2; }
+float FanController::distance_to_target() const { return co2 - co2_target.f32; }
 
 void FanController::adjust_speed() {
     float distance = distance_to_target();

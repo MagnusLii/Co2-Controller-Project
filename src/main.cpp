@@ -42,6 +42,9 @@ struct hw_setup_params {
 struct sub_setup_params {
     std::shared_ptr<DeviceRegistry> registry;
     ConnectionHandler* connection_handler;
+    std::shared_ptr<Screen> screen;
+    std::shared_ptr<Rotary> rotary;
+
 };
 
 void setup_task(void *pvParameters);
@@ -63,7 +66,7 @@ int main() {
     std::shared_ptr<Screen> screen;
     std::shared_ptr<Rotary> rotary;
     hw_setup_params hw_params{uart_i, mbctrl, i2c_i, registry, screen, rotary};
-    sub_setup_params sub_params{registry, NULL, screen};
+    //sub_setup_params sub_params{registry, NULL, screen};
     xTaskCreate(setup_task, "setup_task", 512, &hw_params, tskIDLE_PRIORITY + 5, nullptr);
     // xTaskCreate(subscriber_setup_task, "subscriber_setup_task", 512, &sub_params, tskIDLE_PRIORITY + 3, nullptr);
 
