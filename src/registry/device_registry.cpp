@@ -1,4 +1,5 @@
 #include "device_registry.h"
+#include "HardwareConst.hpp"
 #include "fan_controller.h"
 #include "register_handler.h"
 #include "task_defines.h"
@@ -15,19 +16,22 @@ void DeviceRegistry::add_shared(shared_modbus mbctrl, shared_i2c i2c_i) {
 
 // Setup task to create register handlers and add them to the registry
 void DeviceRegistry::initialize() {
-    auto co2 = std::make_shared<ModbusReadHandler>(mbctrl, 240, 0x0, 2, true, ReadingType::CO2,
-                                                   "CO2 Level");
-    auto temp = std::make_shared<ModbusReadHandler>(mbctrl, 241, 0x2, 2, true,
-                                                    ReadingType::TEMPERATURE, "Temp");
-    auto hum = std::make_shared<ModbusReadHandler>(mbctrl, 241, 0x0, 2, true,
-                                                   ReadingType::REL_HUMIDITY, "Hum");
-    auto fan_counter = std::make_shared<ModbusReadHandler>(mbctrl, 1, 4, 1, false,
-                                                           ReadingType::FAN_COUNTER, "Fan Counter");
-    auto w_fan_speed = std::make_shared<ModbusWriteHandler>(mbctrl, 1, 0, 1, WriteType::FAN_SPEED,
-                                                          "Fan Speed Control");
-    auto pressure = std::make_shared<I2CHandler>(i2c, 0x40, ReadingType::PRESSURE, "Pressure");
+    auto co2 = std::make_shared<ModbusReadHandler>(mbctrl, MB_DEVADDR_CO2, MB_REGADDR_CO2, 2, true,
+                                                   ReadingType::CO2, "CO2 Level");
+    auto temp = std::make_shared<ModbusReadHandler>(mbctrl, MB_DEVADDR_TEMP, MB_REGADDR_TEMP, 2,
+                                                    true, ReadingType::TEMPERATURE, "Temperature");
+    auto hum = std::make_shared<ModbusReadHandler>(mbctrl, MB_DEVADDR_REL_HUM, MB_REGADDR_REL_HUM,
+                                                   2, true, ReadingType::REL_HUMIDITY, "Humidity");
+    auto fan_counter =
+        std::make_shared<ModbusReadHandler>(mbctrl, MB_DEVADDR_FAN, MB_REGADDR_FAN_COUNTER, 1,
+                                            false, ReadingType::FAN_COUNTER, "Fan Counter");
+    auto w_fan_speed = std::make_shared<ModbusWriteHandler>(
+        mbctrl, MB_DEVADDR_FAN, MB_REGADDR_FAN_SPEED, 1, WriteType::FAN_SPEED, "Fan Speed Control");
+    auto pressure =
+        std::make_shared<I2CHandler>(i2c, I2C_DEVADDR_PRESSURE, ReadingType::PRESSURE, "Pressure");
 
-    fanctrl = std::make_shared<FanController>(w_fan_speed->get_write_queue_handle(), 400.0); // <- value should be read from eeprom
+    fanctrl = std::make_shared<FanController>(w_fan_speed->get_write_queue_handle(),
+                                              400.0); // <- value should be read from eeprom
 
     add_register_handler(std::move(co2), ReadingType::CO2);
     add_register_handler(std::move(temp), ReadingType::TEMPERATURE);
@@ -61,12 +65,12 @@ QueueHandle_t DeviceRegistry::get_write_queue_handle(const WriteType type) {
     if (write_handlers.find(type) != write_handlers.end()) {
         std::cout << "Subscriber given handle to " << write_handlers[type]->get_name() << std::endl;
         switch (type) {
-            case WriteType::FAN_SPEED:
-            case WriteType::CO2_TARGET:
-                return fanctrl->get_write_queue_handle();
-                break;
-            default:
-                return write_handlers[type]->get_write_queue_handle();
+        case WriteType::FAN_SPEED:
+        case WriteType::CO2_TARGET:
+            return fanctrl->get_write_queue_handle();
+            break;
+        default:
+            return write_handlers[type]->get_write_queue_handle();
         }
     }
     std::cout << "Handler not found" << std::endl;
