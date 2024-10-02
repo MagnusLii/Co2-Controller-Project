@@ -27,7 +27,7 @@ void DeviceRegistry::initialize() {
                                                           "Fan Speed Control");
     auto pressure = std::make_shared<I2CHandler>(i2c, 0x40, ReadingType::PRESSURE, "Pressure");
 
-    fanctrl = std::make_shared<FanController>(w_fan_speed->get_write_queue_handle(), 400.0);
+    fanctrl = std::make_shared<FanController>(w_fan_speed->get_write_queue_handle(), 400.0); // <- value should be read from eeprom
 
     add_register_handler(std::move(co2), ReadingType::CO2);
     add_register_handler(std::move(temp), ReadingType::TEMPERATURE);
@@ -55,8 +55,6 @@ void DeviceRegistry::subscribe_to_handler(const ReadingType type, QueueHandle_t 
     }
 }
 
-// TODO: this should probably first redirect to FanController and then to ModbusHandler
-//
 // Get write queue handle for a specific write handler
 // Subscriber must specify WriteType and will get a queue handle in return if it exists
 QueueHandle_t DeviceRegistry::get_write_queue_handle(const WriteType type) {

@@ -83,36 +83,32 @@ void FanController::adjust_speed() {
     std::cout << "Adjusting fan speed to " << speed << std::endl;
 }
 
-FanSpeedReadHandler::FanSpeedReadHandler(std::shared_ptr<FanController> fanctrl) : fanctrl(fanctrl) {
+
+void FanCtrlReadHandler::read_fanctrl_register() {
+    for (;;) {
+        get_reading();
+        send_reading();
+        vTaskDelay(pdMS_TO_TICKS(reading_interval));
+    }
+}
+
+FanSpeedReadHandler::FanSpeedReadHandler(std::shared_ptr<FanController> fanctrl) {
     this->reading = {ReadingType::FAN_SPEED, {0}};
-    xTaskCreate(read_fan_speed_task, "FanSpeedReadHandler", 256, this, TASK_PRIORITY_MEDIUM, NULL);
+    this->fanctrl = fanctrl;
+    xTaskCreate(read_fanctrl_register_task, "FanSpeedReadHandler", 256, this, TASK_PRIORITY_MEDIUM, NULL);
 }
 
 void FanSpeedReadHandler::get_reading() {
     reading.value.u16 = fanctrl->get_speed(); 
 }
 
-void FanSpeedReadHandler::read_fan_speed() {
-    for (;;) {
-        get_reading();
-        send_reading();
-        vTaskDelay(pdMS_TO_TICKS(reading_interval));
-    }
-}
-
-CO2TargetReadHandler::CO2TargetReadHandler(std::shared_ptr<FanController> fanctrl) : fanctrl(fanctrl) {
+CO2TargetReadHandler::CO2TargetReadHandler(std::shared_ptr<FanController> fanctrl) {
     this->reading = {ReadingType::CO2_TARGET, {0}};
-    xTaskCreate(read_co2_target_task, "CO2TargetReadHandler", 256, this, TASK_PRIORITY_MEDIUM, NULL);
+    this->fanctrl = fanctrl;
+    xTaskCreate(read_fanctrl_register_task, "CO2TargetReadHandler", 256, this, TASK_PRIORITY_MEDIUM, NULL);
 }
 
 void CO2TargetReadHandler::get_reading() {
     reading.value.f32 = fanctrl->get_co2_target();
 }
 
-void CO2TargetReadHandler::read_co2_target() {
-    for (;;) {
-        get_reading();
-        send_reading();
-        vTaskDelay(pdMS_TO_TICKS(reading_interval));
-    }
-}

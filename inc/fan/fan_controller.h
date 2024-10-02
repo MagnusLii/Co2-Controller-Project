@@ -33,47 +33,45 @@ class FanController {
     void adjust_speed();
 
     QueueHandle_t reading_queue; // Used to receive readings from modbus registers
-    QueueHandle_t write_queue; // We receive write requests from other tasks
-    QueueHandle_t speed_queue; // This is where we send the fan speed changes - Fan Speed RegisterHandler
+    QueueHandle_t write_queue;   // We receive write requests from other tasks
+    QueueHandle_t
+        speed_queue; // This is where we send the fan speed changes - Fan Speed RegisterHandler
     uint16_t speed = 0;
     uint16_t counter = 0;
     float co2 = 0.0;
-    union { uint32_t u32; float f32; } co2_target;
+    union {
+        uint32_t u32;
+        float f32;
+    } co2_target;
     bool spinning;
 
     // TODO: Do we do this?
     bool manual_mode = false; // if true, stop all automagical fan adjustments
 };
 
-// TODO: These next two could be almost completely merged if we want even more inheritance
-class FanSpeedReadHandler : public ReadRegisterHandler {
+class FanCtrlReadHandler : public ReadRegisterHandler {
+  protected:
+    void read_fanctrl_register();
+    static void read_fanctrl_register_task(void *pvParameters) {
+        auto *handler = static_cast<FanCtrlReadHandler *>(pvParameters);
+        handler->read_fanctrl_register();
+    }
+
+    std::shared_ptr<FanController> fanctrl;
+};
+
+class FanSpeedReadHandler : public FanCtrlReadHandler {
   public:
     FanSpeedReadHandler(std::shared_ptr<FanController> fanctrl);
     void get_reading() override;
 
   private:
-    void read_fan_speed();
-    static void read_fan_speed_task(void *pvParameters) {
-        auto *handler = static_cast<FanSpeedReadHandler *>(pvParameters);
-        handler->read_fan_speed();
-    }
-
-    std::shared_ptr<FanController> fanctrl; 
 };
 
-class CO2TargetReadHandler : public ReadRegisterHandler {
+class CO2TargetReadHandler : public FanCtrlReadHandler {
   public:
     CO2TargetReadHandler(std::shared_ptr<FanController> fanctrl);
     void get_reading() override;
-
-  private:
-    void read_co2_target();
-    static void read_co2_target_task(void *pvParameters) {
-        auto *handler = static_cast<CO2TargetReadHandler *>(pvParameters);
-        handler->read_co2_target();
-    }
-
-    std::shared_ptr<FanController> fanctrl; 
 };
 
 #endif // FAN_CONTROLLER_H
