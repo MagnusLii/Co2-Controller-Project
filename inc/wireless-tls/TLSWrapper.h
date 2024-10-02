@@ -48,6 +48,7 @@ private:
     ConnectionStatus connectionStatus;
     const char certificate[] = TLS_CERTIFICATE;
     int certificateLength;
+    ConnectionStatus connectionStatus;
 
     // TCP connection details
     struct tcp_pcb* tcp_pcb;
@@ -57,7 +58,6 @@ private:
     struct altcp_tls_config *tls_config;
     TLS_CLIENT_T *state_;
 
-    int certificateLength;
     const int connectionTimeout = CONNECTION_TIMEOUT_MS;
     const int maxBufferSize = MAX_BUFFER_SIZE;
     const int pollTime = POLL_TIME_S;
