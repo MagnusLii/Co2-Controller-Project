@@ -6,6 +6,8 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 
+#include "register_handler.h"
+
 
 class Rotary {
     friend void rotary_irq_handler(uint gpio, uint32_t mask);
