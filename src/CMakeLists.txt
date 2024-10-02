@@ -30,6 +30,8 @@ add_executable(${ProjectName}
 
         ipstack/tls_common.c
         ipstack/picow_tls_client.c
+
+        wireless-tls/TLSWrapper.cpp
 )
 
 target_include_directories(${ProjectName} PRIVATE
@@ -45,6 +47,7 @@ target_include_directories(${ProjectName} PRIVATE
         ${INCLUDE_DIR}/registry
         ${INCLUDE_DIR}/uart
         ${INCLUDE_DIR}/wireless_tasks
+        ${INCLUDE_DIR}/wireless-tls
 )
 
 target_compile_definitions(${ProjectName} PRIVATE
