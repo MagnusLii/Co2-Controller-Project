@@ -29,110 +29,38 @@ struct Message {
 
 class TLSWrapper {
 public:
-    // Enum for connection status
     enum class ConnectionStatus {
         CONNECTED,
         DISCONNECTED,
-        ERROR,
-        ERROR_OUT_OF_MEMORY,
-        ERROR_ADDRESS_CONVERSION
+        ERROR
     };
 
-    // Enum for order (API fields)
-    enum class ApiFields {
-        CO2_LEVEL,
-        RELATIVE_HUMIDITY,
-        TEMPERATURE,
-        VENT_FAN_SPEED,
-        CO2_SET_POINT,
-        TIMESTAMP,
-        DEVICE_STATUS,
-        UNDEFINED
-    };
+    TLSWrapper(const char *ssid, const char *pw, const uint32_t countryCode = CYW43_COUNTRY_FINLAND);
 
-    // Enum for connection type
-    enum class ConnectionProtocol {
-        HTTP,
-        HTTPS
-    };
-
-    TLSWrapper(const char *ssid, const char *pw, const uint32_t countryCode,
-        ConnectionProtocol ConnectionProtocol = ConnectionProtocol::HTTP,
-        QueueHandle_t sendQueueHandle = nullptr,
-        QueueHandle_t receiveQueueHandle = nullptr)
-        : connectionProtocol(ConnectionProtocol),
-          sendQueue(sendQueueHandle ? sendQueueHandle : xQueueCreate(SEND_QUEUE_SIZE, sizeof(Message))),
-          receiveQueue(receiveQueueHandle ? receiveQueueHandle : xQueueCreate(RECEIVE_QUEUE_SIZE, sizeof(Message))),
-          connectionStatus(ConnectionStatus::DISCONNECTED) {
-            certificateLength = sizeof(TLS_CERTIFICATE);
-          }
-
-    // Destructor to destroy queues if they were created internally
-    ~TLSWrapper() {
-        if (sendQueue != nullptr && sendQueueHandle == nullptr) {
-            vQueueDelete(sendQueue);
-        }
-        if (receiveQueue != nullptr && receiveQueueHandle == nullptr) {
-            vQueueDelete(receiveQueue);
-        }
-    }
-
-    // Connection status
-    void setConnectionStatus(ConnectionStatus status);
-    ConnectionStatus getConnectionStatus();
-    bool isConnected();
-    ConnectionStatus disconnect();
-
-    // Connection initialization
     ConnectionStatus connect(const std::string& hostname, int port);
-    int connect(const char *hostname, int port);
 
-    // Sending data
-    int send(const Message& message, int timeout_ms);
-    // int send(const std::string& message, int timeout_ms);
-    // int send(const char *message, int length, int timeout_ms);
-
-    // Receiving data
-    Message receive(int maxCharsToRead, int timeout_ms);
-    // std::string receiveString(int maxCharsToRead, int timeout_ms);
-    // char *receiveCharArray(int maxCharsToRead, int timeout_ms);
-
-    // Message creation
-    Message createMinimalPushMessage(const Reading* readings, int numReadings);
-
-
-    static err_t tcp_client_sent(void *arg, struct tcp_pcb *tpcb, u16_t len);
-    static err_t tcp_client_poll(void *arg, struct tcp_pcb *tpcb);
-    static err_t tcp_client_receive(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err);
-    static err_t tcp_client_connected(void *arg, struct tcp_pcb *tpcb, err_t err);
-    static void tcp_client_err(void *arg, err_t err);
+    int send(const std::string& data);
+    std::string receive();
 
 private:
-    // general
     ConnectionStatus connectionStatus;
-    QueueHandle_t sendQueue;             // Default queue where constructed messages are sent
-    QueueHandle_t receiveQueue;          // Default queue where received messages are sent
-    ConnectionProtocol connectionProtocol;
+    const char certificate[] = TLS_CERTIFICATE;
+    int certificateLength;
 
-    //HTTP
-    struct tcp_pcb *tcp_pcb;
-    ip_addr_t ipAddress;
-    uint8_t buffer[MAX_BUFFER_SIZE];
-    uint16_t count;
-    uint32_t dropped;
-    uint16_t wr; // write index
-    uint16_t rd; // read index
+    // TCP connection details
+    struct tcp_pcb* tcp_pcb;
+    ip4_addr ipAddress;
 
+    // TLS session data
+    struct altcp_tls_config *tls_config;
+    TLS_CLIENT_T *state_;
 
-    // HTTPS
-    //const char* server_;
-    const uint8_t certificate = TLS_CERTIFICATE;
-    size_t certificateLength;
-    const char* request;
-    int timeout;
-    TLS_CLIENT_T* state;
-    struct altcp_tls_config* tls_config;
+    int certificateLength;
+    const int connectionTimeout = CONNECTION_TIMEOUT_MS;
+    const int maxBufferSize = MAX_BUFFER_SIZE;
+    const int pollTime = POLL_TIME_S;
 };
+
 
 
 #endif //TLSWRAPPER_H
