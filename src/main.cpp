@@ -82,3 +82,49 @@ int main() {
 
     for(;;);
 }
+
+bool run_tls_client_test(const uint8_t *cert, size_t cert_len, const char *server, const char *request, int timeout) {
+
+    //mbedtls_debug_set_threshold(4); // requires #define MBEDTLS_DEBUG_C in mbedtls_xonfig.h
+
+    /* No CA certificate checking */
+    tls_config = altcp_tls_create_config_client(cert, cert_len);
+    assert(tls_config);
+
+    //mbedtls_ssl_conf_authmode(&tls_config->conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
+    mbedtls_ssl_conf_authmode((mbedtls_ssl_config *)tls_config, MBEDTLS_SSL_VERIFY_OPTIONAL);
+    //mbedtls_ssl_conf_authmode((mbedtls_ssl_config *)tls_config, MBEDTLS_SSL_VERIFY_REQUIRED);
+    //mbedtls_ssl_conf_dbg((mbedtls_ssl_config *)tls_config, tlsdebug, NULL);
+
+    TLS_CLIENT_T *state = tls_client_init();
+    if (!state) {
+        return false;
+    }
+    state->http_request = request;
+    state->timeout = timeout;
+    if (!tls_client_open(server, state)) {
+        return false;
+    }
+    while(!state->complete) {
+        // the following #ifdef is only here so this same example can be used in multiple modes;
+        // you do not need it in your code
+#if PICO_CYW43_ARCH_POLL
+        // if you are using pico_cyw43_arch_poll, then you must poll periodically from your
+        // main loop (not from a timer) to check for Wi-Fi driver or lwIP work that needs to be done.
+        cyw43_arch_poll();
+        // you can poll as often as you like, however if you have nothing else to do you can
+        // choose to sleep until either a specified time, or cyw43_arch_poll() has work to do:
+        cyw43_arch_wait_for_work_until(make_timeout_time_ms(1000));
+#else
+        // if you are not using pico_cyw43_arch_poll, then WiFI driver and lwIP work
+        // is done via interrupt in the background. This sleep is just an example of some (blocking)
+        // work you might be doing.
+        //sleep_ms(1000);
+        vTaskDelay(1000);
+#endif
+    }
+    int err = state->error;
+    free(state);
+    altcp_tls_free_config(tls_config);
+    return err == 0;
+}
