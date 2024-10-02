@@ -27,6 +27,9 @@ add_executable(${ProjectName}
 
         wireless-tasks/connection_handler.cpp
         wireless-tasks/api_tasks.cpp
+
+        ipstack/tls_common.c
+        ipstack/picow_tls_client.c
 )
 
 target_include_directories(${ProjectName} PRIVATE
