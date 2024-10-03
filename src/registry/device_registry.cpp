@@ -1,35 +1,48 @@
 #include "device_registry.h"
+#include "fan_controller.h"
+#include "hardware_const.h"
+#include "register_handler.h"
+#include "task_defines.h"
 
 DeviceRegistry::DeviceRegistry() {
-    xTaskCreate(initialize_task, "initialize_registry", 512, this, tskIDLE_PRIORITY + 4, NULL);
+    xTaskCreate(initialize_task, "initialize_registry", 512, this, TASK_PRIORITY_ABSOLUTE, nullptr);
 }
 
 // Add shared pointers to the registry
-void DeviceRegistry::add_shared(shared_modbus sh_mb, shared_i2c sh_i2c) {
-    mbctrl = sh_mb;
-    i2c = sh_i2c;
+void DeviceRegistry::add_shared(shared_modbus mbctrl, shared_i2c i2c_i) {
+    this->mbctrl = mbctrl;
+    this->i2c = i2c_i;
 }
 
 // Setup task to create register handlers and add them to the registry
 void DeviceRegistry::initialize() {
-    const auto co2 =
-        std::make_shared<ModbusReadHandler>(mbctrl, 240, 0x0, 2, true, ReadingType::CO2, "CO2");
-    const auto temp = std::make_shared<ModbusReadHandler>(mbctrl, 241, 0x2, 2, true,
-                                                          ReadingType::TEMPERATURE, "Temp");
-    const auto hum = std::make_shared<ModbusReadHandler>(mbctrl, 241, 0x0, 2, true,
-                                                         ReadingType::REL_HUMIDITY, "Hum");
-    const auto fan = std::make_shared<ModbusReadHandler>(mbctrl, 1, 4, 1, false,
-                                                         ReadingType::FAN_COUNTER, "Fan Counter");
-    const auto speed =
-        std::make_shared<ModbusWriteHandler>(mbctrl, 1, 0, 1, WriteType::FAN_SPEED, "Fan Speed");
-    const auto pressure = std::make_shared<I2CHandler>(i2c, 0x40, ReadingType::PRESSURE, "Pressure");
+    auto co2 = std::make_shared<ModbusReadHandler>(mbctrl, MB_DEVADDR_CO2, MB_REGADDR_CO2, 2, true, ReadingType::CO2,
+                                                   "CO2 Level");
+    auto temp = std::make_shared<ModbusReadHandler>(mbctrl, MB_DEVADDR_TEMP, MB_REGADDR_TEMP, 2, true,
+                                                    ReadingType::TEMPERATURE, "Temperature");
+    auto hum = std::make_shared<ModbusReadHandler>(mbctrl, MB_DEVADDR_REL_HUM, MB_REGADDR_REL_HUM, 2, true,
+                                                   ReadingType::REL_HUMIDITY, "Humidity");
+    auto fan_counter = std::make_shared<ModbusReadHandler>(mbctrl, MB_DEVADDR_FAN, MB_REGADDR_FAN_COUNTER, 1, false,
+                                                           ReadingType::FAN_COUNTER, "Fan Counter");
+    auto w_fan_speed = std::make_shared<ModbusWriteHandler>(mbctrl, MB_DEVADDR_FAN, MB_REGADDR_FAN_SPEED, 1,
+                                                            WriteType::FAN_SPEED, "Fan Speed Control");
+    auto pressure = std::make_shared<I2CHandler>(i2c, I2C_DEVADDR_PRESSURE, ReadingType::PRESSURE, "Pressure");
 
-    add_register_handler(co2, ReadingType::CO2);
-    add_register_handler(temp, ReadingType::TEMPERATURE);
-    add_register_handler(hum, ReadingType::REL_HUMIDITY);
-    add_register_handler(fan, ReadingType::FAN_COUNTER);
-    add_register_handler(speed, WriteType::FAN_SPEED);
-    add_register_handler(pressure, ReadingType::PRESSURE);
+    float target_from_eeprom = 400.0;
+    fanctrl = std::make_shared<FanController>(w_fan_speed->get_write_queue_handle(), target_from_eeprom);
+
+    add_register_handler(std::move(co2), ReadingType::CO2);
+    add_register_handler(std::move(temp), ReadingType::TEMPERATURE);
+    add_register_handler(std::move(hum), ReadingType::REL_HUMIDITY);
+    add_register_handler(std::move(fan_counter), ReadingType::FAN_COUNTER);
+    add_register_handler(std::move(pressure), ReadingType::PRESSURE);
+    add_register_handler(std::move(w_fan_speed), WriteType::FAN_SPEED);
+
+    subscribe_to_handler(ReadingType::CO2, fanctrl->get_reading_queue_handle());
+    subscribe_to_handler(ReadingType::FAN_COUNTER, fanctrl->get_reading_queue_handle());
+
+    auto r_fan_speed = std::make_shared<FanSpeedReadHandler>(fanctrl);
+    auto co2_target = std::make_shared<CO2TargetReadHandler>(fanctrl);
 
     vTaskSuspend(nullptr);
 }
@@ -46,11 +59,19 @@ void DeviceRegistry::subscribe_to_handler(const ReadingType type, QueueHandle_t 
 }
 
 // Get write queue handle for a specific write handler
-// Subscriber must specify WriteType and will get a queue handle in return if it exists
+// Subscriber must specify WriteType and will get a queue handle in return if
+// one exists for the chosen type
 QueueHandle_t DeviceRegistry::get_write_queue_handle(const WriteType type) {
     if (write_handlers.find(type) != write_handlers.end()) {
         std::cout << "Subscriber given handle to " << write_handlers[type]->get_name() << std::endl;
-        return write_handlers[type]->get_write_queue_handle();
+        switch (type) {
+            case WriteType::FAN_SPEED:
+            case WriteType::CO2_TARGET:
+                return fanctrl->get_write_queue_handle();
+                break;
+            default:
+                return write_handlers[type]->get_write_queue_handle();
+        }
     }
     std::cout << "Handler not found" << std::endl;
     return nullptr;
@@ -66,8 +87,8 @@ void DeviceRegistry::subscribe_to_all(QueueHandle_t receiver) {
 }
 
 // Add a read handler to the registry unless one of the same type already exists
-void DeviceRegistry::add_register_handler(std::shared_ptr<ReadRegisterHandler> handler,
-                                          const ReadingType type) {
+void DeviceRegistry::add_register_handler(std::shared_ptr<ReadRegisterHandler> handler, const ReadingType type) {
+
     for (const auto &[rtype, rhandler] : read_handlers) {
         if (type == rtype) {
             std::cout << "Handler already exists" << std::endl;
@@ -78,9 +99,10 @@ void DeviceRegistry::add_register_handler(std::shared_ptr<ReadRegisterHandler> h
     std::cout << "Read handler added" << std::endl;
 }
 
-// Add a write handler to the registry unless one of the same type already exists
-void DeviceRegistry::add_register_handler(std::shared_ptr<WriteRegisterHandler> handler,
-                                          const WriteType type) {
+// Add a write handler to the registry unless one of the same type already
+// exists
+void DeviceRegistry::add_register_handler(std::shared_ptr<WriteRegisterHandler> handler, const WriteType type) {
+
     for (const auto &[wtype, whandler] : write_handlers) {
         if (type == wtype) {
             std::cout << "Handler already exists" << std::endl;
@@ -96,12 +118,12 @@ void DeviceRegistry::add_register_handler(std::shared_ptr<WriteRegisterHandler> 
 //
 TestSubscriber::TestSubscriber() {
     receiver = xQueueCreate(10, sizeof(Reading));
-    xTaskCreate(receive_task, "Receive Task", 256, this, tskIDLE_PRIORITY + 2, nullptr);
+    xTaskCreate(receive_task, "Receive Task", 256, this, TASK_PRIORITY_MEDIUM, nullptr);
 }
 
-TestSubscriber::TestSubscriber(const std::string& name) : name(name) {
+TestSubscriber::TestSubscriber(const std::string &name) : name(name) {
     receiver = xQueueCreate(10, sizeof(Reading));
-    xTaskCreate(receive_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 2, nullptr);
+    xTaskCreate(receive_task, name.c_str(), 256, this, TASK_PRIORITY_MEDIUM, nullptr);
 }
 
 void TestSubscriber::receive() {
@@ -127,21 +149,22 @@ TestWriter::TestWriter() {
     this->send_handle = nullptr;
 }
 
-TestWriter::TestWriter(std::string name, QueueHandle_t handle) {
-    this->name = std::move(name);
+TestWriter::TestWriter(const std::string &name, QueueHandle_t handle) {
+    this->name = name;
     this->send_handle = handle;
 
-    xTaskCreate(send_task, name.c_str(), 256, this, tskIDLE_PRIORITY + 2, nullptr);
+    xTaskCreate(send_task, name.c_str(), 256, this, TASK_PRIORITY_MEDIUM, nullptr);
 }
 
 void TestWriter::add_send_handle(QueueHandle_t handle) { send_handle = handle; }
 
 void TestWriter::send() const {
-    uint32_t msg = 400;
+    Command cmd{WriteType::CO2_TARGET, {0}};
+    cmd.value.f32 = 800.0;
     for (;;) {
-        xQueueSend(send_handle, &msg, 0);
-        msg = 0;
-        vTaskDelay(pdMS_TO_TICKS(10000));
+        xQueueSend(send_handle, &cmd, 0);
+        cmd.value.f32 = 400.0;
+        vTaskDelay(pdMS_TO_TICKS(30000));
     }
 }
 

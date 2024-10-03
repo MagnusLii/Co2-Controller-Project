@@ -39,8 +39,8 @@ private:
     struct tcp_pcb *tcp_pcb;
     ip_addr_t remote_addr;
     uint8_t buffer[BUF_SIZE];
-    uint16_t count;
     uint32_t dropped;
+    uint16_t count;
     uint16_t wr; // write index
     uint16_t rd; // read index
     bool connected;
