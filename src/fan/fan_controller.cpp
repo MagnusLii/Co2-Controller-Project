@@ -1,5 +1,6 @@
 #include "fan_controller.h"
 #include "task_defines.h"
+#include <cmath>
 #include <iostream>
 
 FanController::FanController(QueueHandle_t fan_speed_q, float prev_co2_target) : speed_queue(fan_speed_q) {
@@ -23,7 +24,7 @@ void FanController::fan_control() {
     vTaskDelay(pdMS_TO_TICKS(500));
     for (;;) {
         Reading reading;
-        if (xQueueReceive(reading_queue, &reading, pdMS_TO_TICKS(10))) {
+        while (xQueueReceive(reading_queue, &reading, pdMS_TO_TICKS(10))) {
             if (reading.type == ReadingType::CO2) {
                 co2 = reading.value.f32;
             } else if (reading.type == ReadingType::FAN_COUNTER) {
@@ -38,14 +39,19 @@ void FanController::fan_control() {
                 co2_target = command.value.f32;
             } else if (command.type == WriteType::FAN_SPEED && manual_mode) {
                 set_speed(command.value.u16);
+            } else if (command.type == WriteType::MODE_SET) {
+                if (command.value.u16 == 0) manual_mode = false;
+                if (command.value.u16 == 1) manual_mode = true;
             }
         }
 
-        if (co2 >= CO2_CRITICAL) {
-            uint16_t new_speed = FAN_MAX;
-            set_speed(new_speed);
-        } else {
-            adjust_speed();
+        if (!manual_mode) {
+            if (co2 >= CO2_CRITICAL) {
+                uint16_t new_speed = FAN_MAX;
+                set_speed(new_speed);
+            } else {
+                adjust_speed();
+            }
         }
 
         // TODO: Need to tune later with the actual machine
@@ -59,19 +65,20 @@ void FanController::set_speed(uint16_t new_speed) {
 }
 
 // Check if the fan is spinning - two consecutive 0s should mean it's not
-// spinning
 void FanController::is_fan_spinning(const uint16_t &new_count) {
     if (new_count == counter && new_count == 0) {
         spinning = false;
+        //std::cout << "Fan is not spinning" << std::endl;
     } else {
         spinning = true;
+        //std::cout << "Fan is spinning" << std::endl;
     }
 }
 
 float FanController::distance_to_target() const { return co2 - co2_target; }
 
 // Automatic adjustment of the fan speed
-// TODO: Might need more tuning with real machine
+// TODO: Definitely need more tuning with real machine
 void FanController::adjust_speed() {
     const float distance = distance_to_target();
 

@@ -31,7 +31,8 @@ enum class ReadingType {
 enum class WriteType {
     UNSET,
     CO2_TARGET,
-    FAN_SPEED
+    FAN_SPEED,
+    MODE_SET
 };
 
 struct Reading {
@@ -40,7 +41,7 @@ struct Reading {
         uint32_t u32; // Float readings get initially pulled as uint32_t
         float f32;    // CO2, CO2 target, Temperature, Humidity
         int32_t i32;  // Probably not used
-        uint16_t u16; // Fan speed, Fan counter
+        uint16_t u16; // Fan speed, Fan counter, Mode set
         int16_t i16;  // Pressure
     } value;
 };

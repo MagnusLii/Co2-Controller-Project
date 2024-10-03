@@ -39,6 +39,7 @@ void DeviceRegistry::initialize() {
     add_register_handler(std::move(w_fan_speed), WriteType::FAN_SPEED);
 
     subscribe_to_handler(ReadingType::CO2, fanctrl->get_reading_queue_handle());
+    subscribe_to_handler(ReadingType::FAN_COUNTER, fanctrl->get_reading_queue_handle());
 
     auto r_fan_speed = std::make_shared<FanSpeedReadHandler>(fanctrl);
     auto co2_target = std::make_shared<CO2TargetReadHandler>(fanctrl);

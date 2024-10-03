@@ -8,9 +8,10 @@
 #define CO2_MIN       0
 #define CO2_MAX       1500
 #define CO2_CRITICAL  2000
-#define CO2_TOLERANCE 25
+#define CO2_TOLERANCE 5
 #define FAN_MIN       0
 #define FAN_MAX       1000
+#define FAN_STARTUP   300
 
 class FanController {
   public:
@@ -41,6 +42,7 @@ class FanController {
     float co2 = 0.0;
     float co2_target;
     bool spinning;
+    const uint16_t fan_starter = FAN_STARTUP;
 
     // TODO: Do we do this?
     bool manual_mode = false; // if true, stop all automagical fan adjustments

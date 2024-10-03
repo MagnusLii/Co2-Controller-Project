@@ -114,8 +114,7 @@ void subscriber_setup_task(void *pvParameters) {
     // subscriber2->get_queue_handle());
     // params->registry->subscribe_to_handler(ReadingType::REL_HUMIDITY,
     // subscriber3->get_queue_handle());
-    // params->registry->subscribe_to_handler(ReadingType::FAN_COUNTER,
-    // subscriber4->get_queue_handle());
+    params->registry->subscribe_to_handler(ReadingType::FAN_COUNTER, subscriber4->get_queue_handle());
     // params->registry->subscribe_to_handler(ReadingType::PRESSURE,
     // subscriber5->get_queue_handle());
     // params->registry->subscribe_to_all(subscriber->get_queue_handle());
