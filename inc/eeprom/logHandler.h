@@ -6,7 +6,7 @@
 #include <memory>
 #include "FreeRTOS.h"
 #include "queue.h"
-#include "register_handler.h"
+#include "device_registry.h"
 /*#include <stdlib.h>
 #include "commhandler.h"*/
 
@@ -66,6 +66,8 @@ class LogHandler {
             LogHandler::findFirstAvailableLog(LOGTYPE_REBOOT_STATUS);
             LogHandler::findFirstAvailableLog(LOGTYPE_COMM_CONFIG);
             bootTimestamp = (to_ms_since_boot(get_absolute_time()) / 1000);
+            receiver = xQueueCreate(10, sizeof(Reading));
+            //xTaskCreate(receive_task, "Receive Task", 256, this, tskIDLE_PRIORITY + 2, nullptr);
         };
         
         void printPrivates();
@@ -78,7 +80,9 @@ class LogHandler {
         void createLogArray(uint8_t *array, int messageCode, uint32_t timestamp);
         //void setCommHandler(std::shared_ptr<CommHandler> commHandler);
         void storeData(float* CO2,float* temperature,float* rel_humidity,int pressure);
-        void fetchCredentials(float *CO2, float *temperature, float *rel_humidity, int16_t *pressure, int *arr);
+        void fetchData(float *CO2, float *temperature, float *rel_humidity, int16_t *pressure, int *arr);
+        [[nodiscard]] QueueHandle_t get_queue_handle() const;
+        QueueHandle_t get_receiver(){return receiver;};
 
     private:
         //std::shared_ptr<CommHandler> commHandler;
@@ -87,7 +91,12 @@ class LogHandler {
         uint32_t bootTimestamp;
         int unusedCommConfigAddr;
         int currentCommConfigAddr;
-        QueueHandle_t queue;
+        QueueHandle_t receiver;
+        void receive();
+        static void receive_task(void *pvParameters) {
+            auto *subscriber = static_cast<LogHandler *>(pvParameters);
+            subscriber->receive();
+        }
 };
 
 uint16_t crc16(const uint8_t *data, size_t length);

@@ -24,9 +24,10 @@
 #define REBOOT_STATUS_START_ADDR (LOG_END_ADDR + LOG_SIZE)
 #define REBOOT_STATUS_END_ADDR (REBOOT_STATUS_START_ADDR + (MAX_LOGS * LOG_SIZE))
 
-#define CREDENTIALS_ARR_SIZE 64
+#define DATA_ARR_SIZE 64
 #define CREDENTIALS_STORAGE_BLOCK 256 
-#define CREDENTIALS_START_ADDR (REBOOT_STATUS_END_ADDR + (CREDENTIALS_ARR_SIZE - (REBOOT_STATUS_END_ADDR % CREDENTIALS_ARR_SIZE))) // Aligns the address to the next 64 byte boundary.
+#define CREDENTIALS_START_ADDR (REBOOT_STATUS_END_ADDR + (DATA_ARR_SIZE - (REBOOT_STATUS_END_ADDR %                                                    \
+                       DATA_ARR_SIZE))) // Aligns the address to the next 64 byte boundary.
 #define CREDENTIALS_NUM 4
 #define CREDENTIALS_END_ADDR (CREDENTIALS_START_ADDR + (CREDENTIALS_STORAGE_BLOCK * (CREDENTIALS_NUM - 1)))
 
@@ -305,6 +306,24 @@ void printValidLogs(LogType logType){
     return;
 }*/
 
+void LogHandler::receive() {
+    for (;;) {
+        Reading reading;
+        if (xQueueReceive(receiver, &reading, pdMS_TO_TICKS(500))) {
+        trap(reading);
+        if (reading.type == ReadingType::FAN_COUNTER) {
+            std::cout << ": " << reading.value.u16 << std::endl;
+        } else if (reading.type == ReadingType::PRESSURE) {
+            std::cout << ": " << reading.value.i16 << std::endl;
+        } else {
+            std::cout << ": " << reading.value.f32 << std::endl;
+        }
+        }
+    }
+}
+
+QueueHandle_t LogHandler::get_queue_handle() const { return receiver; }
+
 int createCredentialArray(std::string str, uint8_t *arr){
     int length = str.length();
     if (length > 60){
@@ -319,103 +338,86 @@ int createCredentialArray(std::string str, uint8_t *arr){
 }
 
 void LogHandler::storeData( float* CO2,  float* temperature,  float* rel_humidity,  int pressure){
-    /*
-    if (strlen(ssid) > 60 || strlen(password) > 60 || strlen(hostname) > 60){
-        printf("Credentials too long.");
-        // TODO: do something else to indicate that the credentials are too long.
-        return;
-    }
-    */
-    char co2Str[15];
-    char tempStr[15];
-    char rel_humStr[15];
-    char pressureStr[10];
+    char co2Str[20], tempStr[20], rhStr[20], pressureStr[20];
+    snprintf(co2Str, sizeof(co2Str), "%f", CO2);
+    snprintf(tempStr, sizeof(tempStr), "%f", temperature);
+    snprintf(rhStr, sizeof(rhStr), "%f", rel_humidity);
+    snprintf(pressureStr, sizeof(pressureStr), "%f", pressure);
 
-    uint8_t co2Arr[CREDENTIALS_ARR_SIZE];
-    uint8_t temperatureArr[CREDENTIALS_ARR_SIZE];
-    uint8_t rel_humidityArr[CREDENTIALS_ARR_SIZE];
-    uint8_t portArr[CREDENTIALS_ARR_SIZE];
+    uint8_t co2Arr[DATA_ARR_SIZE];
+    uint8_t tempArr[DATA_ARR_SIZE];
+    uint8_t rel_humARR[DATA_ARR_SIZE];
+    uint8_t pressureArr[DATA_ARR_SIZE];
 
-    int ssidLen = createCredentialArray(co2Str, co2Arr);
-    int pwLen = createCredentialArray(tempStr, temperatureArr);
-    int hostnameLen = createCredentialArray(rel_humStr, rel_humidityArr);
-    int portLen = createCredentialArray(pressureStr, portArr);
+    int co2Len = createCredentialArray(co2Str, co2Arr);
+    int tempLen = createCredentialArray(tempStr, tempArr);
+    int rhLen = createCredentialArray(rhStr, rel_humARR);
+    int pressureLen = createCredentialArray(pressureStr, pressureArr);
 
-    // TODO: REMOVE TROUBLESHOOT CODE
-    /*
-    std::cout << "SSID CRC: " << std::endl;
-    appendCrcToBase8Array(co2Arr, &ssidLen);
-    for (int i = 0; i < ssidLen; i++){
-        std::cout << (int)co2Arr[i] << " ";
-    }
-    */
-    std::cout << std::endl;
-    appendCrcToBase8Array(co2Arr, &ssidLen);
-    appendCrcToBase8Array(temperatureArr, &pwLen);
-    appendCrcToBase8Array(rel_humidityArr, &hostnameLen);
-    appendCrcToBase8Array(portArr, &portLen);
+    appendCrcToBase8Array(co2Arr, &co2Len);
+    appendCrcToBase8Array(tempArr, &tempLen);
+    appendCrcToBase8Array(rel_humARR, &rhLen);
+    appendCrcToBase8Array(pressureArr, &pressureLen);
 
-    //std::cout << "addr: " << this->unusedCommConfigAddr << std::endl;
-
-    eeprom_write_page(this->unusedCommConfigAddr + (CREDENTIALS_ARR_SIZE * CARBONDIOXIDE), co2Arr, ssidLen);
-    eeprom_write_page(this->unusedCommConfigAddr + (CREDENTIALS_ARR_SIZE * TEMPERATURE), temperatureArr, pwLen);
-    eeprom_write_page(this->unusedCommConfigAddr + (CREDENTIALS_ARR_SIZE * REL_HUMIDITY), rel_humidityArr, hostnameLen);
-    eeprom_write_page(this->unusedCommConfigAddr + (CREDENTIALS_ARR_SIZE * PRESSURE), portArr, portLen);
+    eeprom_write_page(this->unusedCommConfigAddr + (DATA_ARR_SIZE * CARBONDIOXIDE), co2Arr,co2Len);
+    eeprom_write_page(this->unusedCommConfigAddr + (DATA_ARR_SIZE * TEMPERATURE), tempArr,tempLen);
+    eeprom_write_page(this->unusedCommConfigAddr + (DATA_ARR_SIZE * REL_HUMIDITY),rel_humARR, rhLen);
+    eeprom_write_page(this->unusedCommConfigAddr + (DATA_ARR_SIZE * PRESSURE), pressureArr,pressureLen);
 
     LogHandler::incrementUnusedLogIndex(LOGTYPE_COMM_CONFIG);
 
     return;
 }
 
-void LogHandler::fetchCredentials(float *CO2, float *temperature, float *rel_humidity, int16_t *pressure, int *arr){
-    uint8_t ssidArr[CREDENTIALS_ARR_SIZE];
-    uint8_t passwordArr[CREDENTIALS_ARR_SIZE];
-    uint8_t hostnameArr[CREDENTIALS_ARR_SIZE];
-    uint8_t portArr[CREDENTIALS_ARR_SIZE];
-    
-    // Default all values to 0.
-    for (int i = 0; i < 4; i++){
+
+void LogHandler::fetchData(float *CO2, float *temperature, float *rel_humidity, int16_t *pressure, int *arr){
+    uint8_t co2Arr[DATA_ARR_SIZE];
+    uint8_t tempArr[DATA_ARR_SIZE];
+    uint8_t rhArr[DATA_ARR_SIZE];
+    uint8_t pressureArr[DATA_ARR_SIZE];
+
+    for (int i = 0; i < 4; ++i) {
         arr[i] = 0;
     }
 
-    std::cout << "read addr: " << this->currentCommConfigAddr << std::endl;
+    eeprom_read_page(this->currentCommConfigAddr + (DATA_ARR_SIZE * 0), co2Arr, DATA_ARR_SIZE);
+    eeprom_read_page(this->currentCommConfigAddr + (DATA_ARR_SIZE * 1), tempArr, DATA_ARR_SIZE);
+    eeprom_read_page(this->currentCommConfigAddr + (DATA_ARR_SIZE * 2), rhArr, DATA_ARR_SIZE);
+    eeprom_read_page(this->currentCommConfigAddr + (DATA_ARR_SIZE * 3), pressureArr, DATA_ARR_SIZE);
 
-    eeprom_read_page(this->currentCommConfigAddr + (CREDENTIALS_ARR_SIZE * 0), ssidArr, CREDENTIALS_ARR_SIZE);
-    eeprom_read_page(this->currentCommConfigAddr + (CREDENTIALS_ARR_SIZE * 1), passwordArr, CREDENTIALS_ARR_SIZE);
-    eeprom_read_page(this->currentCommConfigAddr + (CREDENTIALS_ARR_SIZE * 2), hostnameArr, CREDENTIALS_ARR_SIZE);
-    eeprom_read_page(this->currentCommConfigAddr + (CREDENTIALS_ARR_SIZE * 3), portArr, CREDENTIALS_ARR_SIZE);
+    char buffer[20]; // Temporary buffer to store string representation of float
 
-    // TODO: figure out what to proceed if the data is not valid.
-    // TODO: Verify that the CRC is not included in the string.
-    if (verifyDataIntegrity(ssidArr, (int)ssidArr[1]) == true){
-        for (int i = 0; i < ((int)ssidArr[1]-4); i++)
-        {
-            CO2[i] = ssidArr[i + 2];
-        }
+    // Check and convert co2Arr to float CO2
+    if (verifyDataIntegrity(co2Arr, (int)co2Arr[1])) {
+        memcpy(buffer, co2Arr + 2, (int)co2Arr[1] - 3);
+        buffer[(int)co2Arr[1] - 3] = '\0'; // Null-terminate string
+        *CO2 = std::strtof(buffer, nullptr);
         arr[0] = 1;
     }
-    if (verifyDataIntegrity(passwordArr, (int)passwordArr[1]) == true){
-        for (int i = 0; i < ((int)passwordArr[1]-4); i++)
-        {
-            temperature[i] = passwordArr[i + 2];
-        }
+
+    // Check and convert tempArr to float temperature
+    if (verifyDataIntegrity(tempArr, (int)tempArr[1])) {
+        memcpy(buffer, tempArr + 2, (int)tempArr[1] - 3);
+        buffer[(int)tempArr[1] - 3] = '\0'; // Null-terminate string
+        *temperature = std::strtof(buffer, nullptr);
         arr[1] = 1;
     }
-    if (verifyDataIntegrity(hostnameArr, (int)hostnameArr[1]) == true){
-        for (int i = 0; i < ((int)hostnameArr[1]-4); i++)
-        {
-            rel_humidity[i] = hostnameArr[i + 2];
-        }
+
+    // Check and convert rhArr to float rel_humidity
+    if (verifyDataIntegrity(rhArr, (int)rhArr[1])) {
+        memcpy(buffer, rhArr + 2, (int)rhArr[1] - 3);
+        buffer[(int)rhArr[1] - 3] = '\0'; // Null-terminate string
+        *rel_humidity = std::strtof(buffer, nullptr);
         arr[2] = 1;
     }
-    if (verifyDataIntegrity(portArr, (int)portArr[1]) == true){
-        
-        char array[10]; 
-        memcpy(array, portArr + 2, (int)portArr[1] - 3);
-        //std::cout << "array: " << array << std::endl;
-        std::size_t len = (int)portArr[1] - 3;
-        *pressure = std::stoi(array, &len);
+
+    // Check and convert pressureArr to float pressure
+    if (verifyDataIntegrity(pressureArr, (int)pressureArr[1])) {
+        memcpy(buffer, pressureArr + 2, (int)pressureArr[1] - 3);
+        buffer[(int)pressureArr[1] - 3] = '\0'; // Null-terminate string
+        *pressure = std::strtof(buffer, nullptr);
         arr[3] = 1;
     }
+
     return;
 }

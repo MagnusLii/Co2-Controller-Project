@@ -30,6 +30,10 @@ add_executable(${ProjectName}
 
         wireless-tasks/connection_handler.cpp
         wireless-tasks/api_tasks.cpp
+        ../inc/wireless_tasks/connection_defines.h
+        eeprom/eeprom_tasks.cpp
+        eeprom/eeprom_tasks.cpp
+        ../inc/eeprom/eeprom_tasks.h
 )
 
 target_include_directories(${ProjectName} PRIVATE
