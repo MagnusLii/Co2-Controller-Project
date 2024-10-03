@@ -18,14 +18,14 @@
 #include "mbedtls/entropy.h"
 #include "mbedtls/error.h"
 #include "lwip/ip4_addr.h"
-#include "lwip/pbuf.h"
 #include "lwip/altcp_tcp.h"
 #include "lwip/altcp_tls.h"
 #include "lwip/dns.h"
+#include "connection_defines.h"
+#include "read_runtime_ctr.cpp"
 
 
-TLSWrapper::TLSWrapper(const char *ssid, const char *password, const uint32_t countryCode,
-        const char* certificate, const int certlen, const uint32_t countryCode = CYW43_COUNTRY_FINLAND){
+TLSWrapper::TLSWrapper(const char *ssid, const char *password, char* certificate, const int certlen, const uint32_t countryCode){
         this->certificate = certificate;
         this->certificateLength = certlen;
 
@@ -44,7 +44,7 @@ TLSWrapper::TLSWrapper(const char *ssid, const char *password, const uint32_t co
     }
 
 void TLSWrapper::connect(const char* endpoint, const int port){
-    tls_config = altcp_tls_create_config_client(this->certificate, this->certificateLength);
+    tls_config = altcp_tls_create_config_client((uint8_t*)this->certificate, this->certificateLength); // wtf
     assert(tls_config);
 
     mbedtls_ssl_conf_authmode((mbedtls_ssl_config *)tls_config, MBEDTLS_SSL_VERIFY_OPTIONAL);
@@ -81,7 +81,7 @@ void TLSWrapper::connect(const char* endpoint, const int port){
 
     while (!tls_client->complete) {
         vTaskDelay(100);
-        TLSWWRAPPERprintf("TLSWrapper::connect: connection live!\n");
+        TLSWRAPPERprintf("TLSWrapper::connect: connection live!\n");
     }
 
     free(tls_client);

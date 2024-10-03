@@ -12,10 +12,10 @@
 
 
 void tls_task(void *pvParameters) {
-    const char *ssid = WIFI_SSID;
-    const char *password = WIFI_PASSWORD;
-    const char *certificate = TLS_CERTIFICATE;
-    TLSWrapper tlsWrapper(ssid, password, certificate, sizeof(certificate));
+    char *ssid = WIFI_SSID;
+    char *password = WIFI_PASSWORD;
+    char *certificate = TLS_CERTIFICATE;
+    TLSWrapper tlsWrapper(ssid, password, certificate, sizeof(certificate), CYW43_COUNTRY_FINLAND);
 
     tlsWrapper.connect(THINGSPEAK_IP, THINGSPEAK_PORT);
 

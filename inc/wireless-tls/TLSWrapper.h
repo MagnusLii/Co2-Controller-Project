@@ -58,15 +58,15 @@ public:
         UNDEFINED
     };
 
-    TLSWrapper(const char *ssid, const char *password, const uint32_t countryCode, 
-    const char* certificate, const int certlen, const uint32_t countryCode = CYW43_COUNTRY_FINLAND);
+    TLSWrapper(const char *ssid, const char *password, char* certificate, const int certlen, const uint32_t countryCode);
 
-    ConnectionStatus connect(const std::string& hostname, int port);
+    void connect(const char* endpoint, const int port);
 
 
 private:
     char* certificate;
     int certificateLength;
+    ConnectionStatus connectionStatus = ConnectionStatus::DISCONNECTED;
 
     TLS_CLIENT_T* tls_client;
 
