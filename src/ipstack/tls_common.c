@@ -241,3 +241,16 @@ bool run_tls_client_test(const uint8_t *cert, size_t cert_len, const char *serve
     altcp_tls_free_config(tls_config);
     return err == 0;
 }
+
+bool tls_send(const char *request, const char *hostname) {
+    TLS_CLIENT_T *state = tls_client_init();
+    if (!state) {
+        return false;
+    }
+    state->http_request = request;
+    state->timeout = 20000;
+    if (!tls_client_open(hostname, state)) {
+        return false;
+    }
+    return true;
+}

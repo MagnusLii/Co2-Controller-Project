@@ -32,6 +32,8 @@ add_executable(${ProjectName}
         wireless-tasks/api_tasks.cpp
 
         rotary/rotary.cpp
+
+        ipstack/TLSConnect.cpp
 )
 
 target_include_directories(${ProjectName} PRIVATE
