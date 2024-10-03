@@ -2,27 +2,21 @@
 #include "task_defines.h"
 #include <iostream>
 
-FanController::FanController(QueueHandle_t fan_speed_q, float prev_co2_target)
-    : speed_queue(fan_speed_q) {
+FanController::FanController(QueueHandle_t fan_speed_q, float prev_co2_target) : speed_queue(fan_speed_q) {
     this->reading_queue = xQueueCreate(5, sizeof(Reading));
     this->write_queue = xQueueCreate(5, sizeof(Command));
-    this->co2_target.f32 = prev_co2_target;
+    this->co2_target = prev_co2_target;
 
-    xTaskCreate(fan_control_task, "FanController", 512, this,
-                TASK_PRIORITY_MEDIUM, nullptr);
+    xTaskCreate(fan_control_task, "FanController", 512, this, TASK_PRIORITY_MEDIUM, nullptr);
 }
 
-QueueHandle_t FanController::get_reading_queue_handle() const {
-    return reading_queue;
-}
+QueueHandle_t FanController::get_reading_queue_handle() const { return reading_queue; }
 
-QueueHandle_t FanController::get_write_queue_handle() const {
-    return write_queue;
-}
+QueueHandle_t FanController::get_write_queue_handle() const { return write_queue; }
 
-uint16_t FanController::get_speed() { return speed; }
+uint16_t FanController::get_speed() const { return speed; }
 
-float FanController::get_co2_target() { return co2_target.f32; }
+float FanController::get_co2_target() const { return co2_target; }
 
 void FanController::fan_control() {
     set_speed(0);
@@ -40,11 +34,9 @@ void FanController::fan_control() {
 
         Command command;
         if (xQueueReceive(write_queue, &command, pdMS_TO_TICKS(10))) {
-            if (command.type == WriteType::CO2_TARGET) {
-                co2_target.f32 = reading.value.f32;
-            }
-            // TODO: Only needed if we actually do manual mode
-            else if (command.type == WriteType::FAN_SPEED && manual_mode) {
+            if (command.type == WriteType::CO2_TARGET && !manual_mode) {
+                co2_target = command.value.f32;
+            } else if (command.type == WriteType::FAN_SPEED && manual_mode) {
                 set_speed(command.value.u16);
             }
         }
@@ -76,20 +68,22 @@ void FanController::is_fan_spinning(const uint16_t &new_count) {
     }
 }
 
-float FanController::distance_to_target() const { return co2 - co2_target.f32; }
+float FanController::distance_to_target() const { return co2 - co2_target; }
 
 // Automatic adjustment of the fan speed
 // TODO: Might need more tuning with real machine
 void FanController::adjust_speed() {
-    float distance = distance_to_target();
+    const float distance = distance_to_target();
 
     if (std::abs(distance) < CO2_TOLERANCE) { return; }
 
-    float adjustment = distance * FAN_MAX / CO2_MAX;
+    const float adjustment = distance * FAN_MAX / CO2_MAX;
     uint16_t new_speed = speed + adjustment / 2;
-    if (new_speed > FAN_MAX) {
+    if (new_speed >= FAN_MAX) {
+        if (speed == FAN_MAX) { return; }
         new_speed = FAN_MAX;
-    } else if (new_speed < FAN_MIN) {
+    } else if (new_speed <= FAN_MIN) {
+        if (speed == FAN_MIN) { return; }
         new_speed = FAN_MIN;
     }
     set_speed(new_speed);
@@ -104,26 +98,18 @@ void FanCtrlReadHandler::read_fanctrl_register() {
     }
 }
 
-FanSpeedReadHandler::FanSpeedReadHandler(
-    std::shared_ptr<FanController> fanctrl) {
+FanSpeedReadHandler::FanSpeedReadHandler(std::shared_ptr<FanController> fanctrl) {
     this->reading = {ReadingType::FAN_SPEED, {0}};
     this->fanctrl = fanctrl;
-    xTaskCreate(read_fanctrl_register_task, "FanSpeedReadHandler", 256, this,
-                TASK_PRIORITY_MEDIUM, nullptr);
+    xTaskCreate(read_fanctrl_register_task, "FanSpeedReadHandler", 256, this, TASK_PRIORITY_MEDIUM, nullptr);
 }
 
-void FanSpeedReadHandler::get_reading() {
-    reading.value.u16 = fanctrl->get_speed();
-}
+void FanSpeedReadHandler::get_reading() { reading.value.u16 = fanctrl->get_speed(); }
 
-CO2TargetReadHandler::CO2TargetReadHandler(
-    std::shared_ptr<FanController> fanctrl) {
+CO2TargetReadHandler::CO2TargetReadHandler(std::shared_ptr<FanController> fanctrl) {
     this->reading = {ReadingType::CO2_TARGET, {0}};
     this->fanctrl = fanctrl;
-    xTaskCreate(read_fanctrl_register_task, "CO2TargetReadHandler", 256, this,
-                TASK_PRIORITY_MEDIUM, nullptr);
+    xTaskCreate(read_fanctrl_register_task, "CO2TargetReadHandler", 256, this, TASK_PRIORITY_MEDIUM, nullptr);
 }
 
-void CO2TargetReadHandler::get_reading() {
-    reading.value.f32 = fanctrl->get_co2_target();
-}
+void CO2TargetReadHandler::get_reading() { reading.value.f32 = fanctrl->get_co2_target(); }

@@ -82,9 +82,8 @@ class ReadRegisterHandler : public RegisterHandler {
 
 class ModbusReadHandler final : public ReadRegisterHandler {
   public:
-    ModbusReadHandler(shared_modbus controller, uint8_t device_address,
-                      uint16_t register_address, uint8_t nr_of_registers,
-                      bool holding_register, ReadingType type,
+    ModbusReadHandler(shared_modbus controller, uint8_t device_address, uint16_t register_address,
+                      uint8_t nr_of_registers, bool holding_register, ReadingType type,
                       const std::string &name = "ModbusReadHandler");
 
   private:
@@ -113,10 +112,8 @@ class WriteRegisterHandler : public RegisterHandler {
 
 class ModbusWriteHandler : public WriteRegisterHandler {
   public:
-    ModbusWriteHandler(shared_modbus controller, uint8_t device_address,
-                       uint16_t register_address, uint8_t nr_of_registers,
-                       WriteType type,
-                       const std::string &name = "ModbusWriteHandler");
+    ModbusWriteHandler(shared_modbus controller, uint8_t device_address, uint16_t register_address,
+                       uint8_t nr_of_registers, WriteType type, const std::string &name = "ModbusWriteHandler");
 
   private:
     void write_to_reg(uint32_t value) override;
@@ -133,8 +130,7 @@ class ModbusWriteHandler : public WriteRegisterHandler {
 
 class I2CHandler final : public ReadRegisterHandler {
   public:
-    I2CHandler(shared_i2c i2c_i, uint8_t device_address,
-               ReadingType rtype = ReadingType::UNSET,
+    I2CHandler(shared_i2c i2c_i, uint8_t device_address, ReadingType rtype = ReadingType::UNSET,
                const std::string &name = "I2CHandler");
 
   private:

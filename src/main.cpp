@@ -52,10 +52,10 @@ int main() {
     stdio_init_all();
     std::cout << "Booting..." << std::endl;
 
-    shared_uart uart_i; // {std::make_shared<Uart_instance>(UART_NR, UART_BAUD,
-                        // UART_TX_PIN, UART_RX_PIN, 2)};
-    shared_modbus mbctrl; // {std::make_shared<ModbusCtrl>(uart_i)};
-    shared_i2c i2c_i;     //{std::make_shared<PicoI2C>(I2C_NR)};
+    shared_uart uart_i;                                 // {std::make_shared<Uart_instance>(UART_NR, UART_BAUD,
+                                                        // UART_TX_PIN, UART_RX_PIN, 2)};
+    shared_modbus mbctrl;                               // {std::make_shared<ModbusCtrl>(uart_i)};
+    shared_i2c i2c_i;                                   //{std::make_shared<PicoI2C>(I2C_NR)};
     auto registry = std::make_shared<DeviceRegistry>(); // {mbctrl, i2c_i};
 
     std::shared_ptr<Screen> screen;
@@ -64,8 +64,7 @@ int main() {
     hw_setup_params hw_params{uart_i, mbctrl, i2c_i, registry, screen, rotary};
     // sub_setup_params sub_params{registry, NULL, screen};
 
-    xTaskCreate(setup_task, "setup_task", 512, &hw_params,
-                TASK_PRIORITY_ABSOLUTE + 1, nullptr);
+    xTaskCreate(setup_task, "setup_task", 512, &hw_params, TASK_PRIORITY_ABSOLUTE + 1, nullptr);
     // xTaskCreate(subscriber_setup_task, "subscriber_setup_task", 512,
     // &sub_params, tskIDLE_PRIORITY + 3, nullptr);
 
@@ -82,8 +81,7 @@ int main() {
 
 void setup_task(void *pvParameters) {
     const auto params = static_cast<hw_setup_params *>(pvParameters);
-    params->uart = std::make_shared<Uart_instance>(
-        UART_NR, UART_BAUD, UART_TX_PIN, UART_RX_PIN, UART_BITS);
+    params->uart = std::make_shared<Uart_instance>(UART_NR, UART_BAUD, UART_TX_PIN, UART_RX_PIN, UART_BITS);
     params->modbus = std::make_shared<ModbusCtrl>(params->uart);
     params->i2c = std::make_shared<PicoI2C>(I2C_1);
     params->registry->add_shared(params->modbus, params->i2c);
@@ -93,10 +91,8 @@ void setup_task(void *pvParameters) {
     // params->registry->subscribe_to_handler(ReadingType::CO2,
     // params->screen->get_queue_handle());
 
-    sub_setup_params sub_params{params->registry, NULL, params->screen,
-                                params->rotary};
-    xTaskCreate(subscriber_setup_task, "subscriber_setup_task", 512,
-                &sub_params, TASK_PRIORITY_HIGH, nullptr);
+    sub_setup_params sub_params{params->registry, NULL, params->screen, params->rotary};
+    xTaskCreate(subscriber_setup_task, "subscriber_setup_task", 512, &sub_params, TASK_PRIORITY_HIGH, nullptr);
 
     vTaskSuspend(nullptr);
 }
@@ -109,12 +105,10 @@ void subscriber_setup_task(void *pvParameters) {
     auto subscriber3 = std::make_shared<TestSubscriber>("Humidity");
     auto subscriber4 = std::make_shared<TestSubscriber>("Fan counter");
     auto subscriber5 = std::make_shared<TestSubscriber>("Pressure");
-    auto writer = std::make_shared<TestWriter>(
-        "Fan speed",
-        params->registry->get_write_queue_handle(WriteType::FAN_SPEED));
+    auto writer =
+        std::make_shared<TestWriter>("Fan speed", params->registry->get_write_queue_handle(WriteType::FAN_SPEED));
 
-    params->registry->subscribe_to_handler(ReadingType::CO2,
-                                           subscriber->get_queue_handle());
+    params->registry->subscribe_to_handler(ReadingType::CO2, subscriber->get_queue_handle());
 
     // params->registry->subscribe_to_handler(ReadingType::TEMPERATURE,
     // subscriber2->get_queue_handle());
@@ -129,18 +123,16 @@ void subscriber_setup_task(void *pvParameters) {
     params->registry->subscribe_to_all(params->screen->get_queue_handle());
     params->rotary->add_subscriber(params->screen->get_queue_handle());
 
-    auto connHandler =
-        static_cast<ConnectionHandler *>(params->connection_handler);
-    xTaskCreate(fully_initialize_connhandler_task, "init IPStack", 1024,
-                (void *)&connHandler, TASK_PRIORITY_ABSOLUTE, nullptr);
+    //auto connHandler = static_cast<ConnectionHandler *>(params->connection_handler);
+    //xTaskCreate(fully_initialize_connhandler_task, "init IPStack", 1024, (void *)&connHandler, TASK_PRIORITY_ABSOLUTE,
+    //            nullptr);
 
     vTaskSuspend(nullptr);
 }
 
 void test_task(void *param) {
     ConnectionHandler *connHandler = static_cast<ConnectionHandler *>(param);
-    while (connHandler->isConnected() != true &&
-           connHandler->isIPStackInitialized() != true) {
+    while (connHandler->isConnected() != true && connHandler->isIPStackInitialized() != true) {
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 

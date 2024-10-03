@@ -9,7 +9,7 @@ AllowShortEnumsOnASingleLine: false
 AllowShortIfStatementsOnASingleLine: true
 AllowShortBlocksOnASingleLine: true
 
-ColumnLimit: 80
+ColumnLimit: 120
 
 IncludeBlocks: Preserve
 IndentCaseLabels: true

@@ -8,7 +8,7 @@
 #define CO2_MIN       0
 #define CO2_MAX       1500
 #define CO2_CRITICAL  2000
-#define CO2_TOLERANCE 50
+#define CO2_TOLERANCE 25
 #define FAN_MIN       0
 #define FAN_MAX       1000
 
@@ -17,8 +17,8 @@ class FanController {
     FanController(QueueHandle_t fan_speed_q, float prev_co2_target);
     [[nodiscard]] QueueHandle_t get_reading_queue_handle() const;
     [[nodiscard]] QueueHandle_t get_write_queue_handle() const;
-    uint16_t get_speed();
-    float get_co2_target();
+    uint16_t get_speed() const;
+    float get_co2_target() const;
 
   private:
     void fan_control();
@@ -34,15 +34,12 @@ class FanController {
 
     QueueHandle_t reading_queue; // Receive readings from modbus registers
     QueueHandle_t write_queue;   // Receive write requests from other tasks
-    QueueHandle_t speed_queue; // This is where we send the fan speed changes -
-                               // Fan Speed RegisterHandler
+    QueueHandle_t speed_queue;   // This is where we send the fan speed changes -
+                                 // Fan Speed RegisterHandler
     uint16_t speed = 0;
     uint16_t counter = 0;
     float co2 = 0.0;
-    union {
-        uint32_t u32;
-        float f32;
-    } co2_target;
+    float co2_target;
     bool spinning;
 
     // TODO: Do we do this?

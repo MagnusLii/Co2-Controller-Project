@@ -39,7 +39,7 @@ class DeviceRegistry { // Maybe rename to something something
 class TestSubscriber {
   public:
     TestSubscriber();
-    explicit TestSubscriber(const std::string& name);
+    explicit TestSubscriber(const std::string &name);
     [[nodiscard]] QueueHandle_t get_queue_handle() const;
 
   private:
@@ -55,12 +55,12 @@ class TestSubscriber {
 };
 
 class TestWriter {
-public:
+  public:
     TestWriter();
-    TestWriter(const std::string& name, QueueHandle_t handle);
+    TestWriter(const std::string &name, QueueHandle_t handle);
     void add_send_handle(QueueHandle_t handle);
 
-private:
+  private:
     void send() const;
     static void send_task(void *pvParameters) {
         const auto *writer = static_cast<TestWriter *>(pvParameters);
@@ -74,4 +74,3 @@ private:
 void trap(Reading reading);
 
 #endif /* DEVICEREGISTRY_H_ */
-
