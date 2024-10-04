@@ -16,6 +16,7 @@
 #include "lwip/dns.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "connection_defines.h"
 
 // MODIFIED to add response buffer for response storage
 typedef struct TLS_CLIENT_T_ {
@@ -269,8 +270,12 @@ bool run_tls_client_test(const uint8_t *cert, size_t cert_len, const char *serve
     return err == 0;  // Return whether the connection was successful
 }
 
-bool send_tls_request(const uint8_t *cert, size_t cert_len, const char *server, const char *request, int timeout, TLS_CLIENT_T *state) {
+void configure_tls(uint8_t *cert, size_t cert_len) {
     tls_config = altcp_tls_create_config_client(cert, cert_len);
+}
+
+bool send_tls_request(const char *server, const char *request, int timeout, TLS_CLIENT_T *state) {
+    tls_config = altcp_tls_create_config_client(TLS_CERTIFICATE, sizeof(TLS_CERTIFICATE));
     assert(tls_config);
 
     mbedtls_ssl_conf_authmode((mbedtls_ssl_config *)tls_config, MBEDTLS_SSL_VERIFY_REQUIRED);

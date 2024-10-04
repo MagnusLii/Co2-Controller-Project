@@ -67,7 +67,7 @@ public:
     void createCommandRequest(Message &messageContainer, const char* command);
 
 private:
-    const std::string certificate;
+    //const std::string certificate;
     const std::string ssid;
     const std::string password;
     const uint32_t countryCode;

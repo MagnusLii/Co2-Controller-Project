@@ -37,7 +37,8 @@ bool tls_client_open(const char *hostname, void *arg);
 TLS_CLIENT_T* tls_client_init(void);
 void tlsdebug(void *ctx, int level, const char *file, int line, const char *message);
 bool run_tls_client_test(const uint8_t *cert, size_t cert_len, const char *server, const char *request, int timeout);
-bool send_tls_request(const uint8_t *cert, size_t cert_len, const char *server, const char *request, int timeout, TLS_CLIENT_T *state);
+    bool send_tls_request(const char *server, const char *request, int timeout, TLS_CLIENT_T *state);
+    void configure_tls(uint8_t *cert, size_t cert_len);
 
 #ifdef __cplusplus
 }

@@ -82,7 +82,7 @@ void tls_task2(void* param){
 int main() {
     stdio_init_all();
     // xTaskCreate(tls_task, "TLS Task", 4096, NULL, 1, NULL);
-    xTaskCreate(tls_task, "TLS TaskS", 8096, NULL, 1, NULL);
+    xTaskCreate(tls_task, "TLS TaskS", 1024, NULL, 1, NULL);
     vTaskStartScheduler();
 
     for(;;);

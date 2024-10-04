@@ -34,27 +34,26 @@ const char* FIELD_NAMES[] = {
     "&field7=",
     "&field8="
 };
-
 TLSWrapper::TLSWrapper(const std::string& cert, const std::string& ssid, const std::string& password, uint32_t countryCode)
-        :certificate(cert),
-         ssid(ssid),
-         password(password),
-         connectionStatus(ConnectionStatus::DISCONNECTED),
-         countryCode(countryCode){
+    :
+     ssid(ssid),
+     password(password),
+     connectionStatus(ConnectionStatus::DISCONNECTED),
+     countryCode(countryCode){
 
-            TLSWRAPPERprintf("TLSWrapper::TLSWrapper: Initializing TLSWrapper\n");
-            if (cyw43_arch_init_with_country(countryCode) != 0) {
-                TLSWRAPPERprintf("TLSWrapper::TLSWrapper: failed init\n");
-            }
-            cyw43_arch_enable_sta_mode();
+        TLSWRAPPERprintf("TLSWrapper::TLSWrapper: Initializing TLSWrapper\n");
+        if (cyw43_arch_init_with_country(countryCode) != 0) {
+            TLSWRAPPERprintf("TLSWrapper::TLSWrapper: failed init\n");
+        }
+        cyw43_arch_enable_sta_mode();
 
-            TLSWRAPPERprintf("TLSWrapper::TLSWrapper: Connecting to wireless\n");
-            if (cyw43_arch_wifi_connect_timeout_ms(ssid.c_str(), password.c_str(), CYW43_AUTH_WPA2_AES_PSK, CONNECTION_TIMEOUT_MS) != 0) {
-                TLSWRAPPERprintf("TLSWrapper::TLSWrapper: failed to connect\n");
-            } else {
-                TLSWRAPPERprintf("TLSWrapper::TLSWrapper: connected\n");
-            }
-            }
+        TLSWRAPPERprintf("TLSWrapper::TLSWrapper: Connecting to wireless\n");
+        if (cyw43_arch_wifi_connect_timeout_ms(ssid.c_str(), password.c_str(), CYW43_AUTH_WPA2_AES_PSK, CONNECTION_TIMEOUT_MS) != 0) {
+            TLSWRAPPERprintf("TLSWrapper::TLSWrapper: failed to connect\n");
+        } else {
+            TLSWRAPPERprintf("TLSWrapper::TLSWrapper: connected\n");
+        }
+}
 
 TLSWrapper::~TLSWrapper() {
     if (tls_client) {
@@ -72,7 +71,7 @@ TLSWrapper::~TLSWrapper() {
 
 void TLSWrapper::send_request(const std::string& endpoint, const std::string& request){
     TLSWRAPPERprintf("TLSWrapper::send_request: %s\n", request.c_str());
-    send_tls_request((uint8_t*)certificate.c_str(), certificate.length() + 1, endpoint.c_str(), request.c_str(), CONNECTION_TIMEOUT_MS, tls_client); // custom made.
+    send_tls_request(endpoint.c_str(), request.c_str(), CONNECTION_TIMEOUT_MS, tls_client); // custom made.
     // run_tls_client_test(cert, sizeof(cert), endpoint.c_str(), request.c_str(), CONNECTION_TIMEOUT_MS); // Verified to work
 }
 
