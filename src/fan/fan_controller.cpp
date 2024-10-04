@@ -36,12 +36,16 @@ void FanController::fan_control() {
         Command command;
         if (xQueueReceive(write_queue, &command, pdMS_TO_TICKS(10))) {
             if (command.type == WriteType::CO2_TARGET && !manual_mode) {
+                manual_mode = true;
                 co2_target = command.value.f32;
             } else if (command.type == WriteType::FAN_SPEED && manual_mode) {
+                manual_mode = true;
                 set_speed(command.value.u16);
             } else if (command.type == WriteType::MODE_SET) {
                 if (command.value.u16 == 0) manual_mode = false;
                 if (command.value.u16 == 1) manual_mode = true;
+            } else if (command.type == WriteType::TOGGLE) {
+                manual_mode = !manual_mode;
             }
         }
 
@@ -81,11 +85,14 @@ float FanController::distance_to_target() const { return co2 - co2_target; }
 // TODO: Definitely need more tuning with real machine
 void FanController::adjust_speed() {
     const float distance = distance_to_target();
+    uint16_t new_speed;
+    if (distance <= 0) {
+        new_speed = 0;
+    } else {
+        new_speed = (1000/(2000-co2_target))*std::round(distance)+200;
+    }
 
-    if (std::abs(distance) < CO2_TOLERANCE) { return; }
 
-    const float adjustment = distance * FAN_MAX / CO2_MAX;
-    uint16_t new_speed = speed + adjustment / 2;
     if (new_speed >= FAN_MAX) {
         if (speed == FAN_MAX) { return; }
         new_speed = FAN_MAX;
