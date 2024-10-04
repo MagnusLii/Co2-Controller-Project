@@ -66,10 +66,12 @@ void tls_task(void *pvParameters) {
                       "\r\n";
 
     TLSWrapper tlsWrapper(cert, ssid, password, countryCode);
+    while (true) {
+        tlsWrapper.send_request(THINGSPEAK_HOSTNAME, request);
+        vTaskDelay(5000);
+    }
 
-    tlsWrapper.send_request(THINGSPEAK_IP, request);
-
-    vTaskDelete(NULL);
+    //vTaskDelete(NULL);
 }
 
 void tls_task2(void* param){
@@ -80,7 +82,7 @@ void tls_task2(void* param){
 int main() {
     stdio_init_all();
     // xTaskCreate(tls_task, "TLS Task", 4096, NULL, 1, NULL);
-    xTaskCreate(tls_task2, "TLS Task 2", 4096, NULL, 1, NULL);
+    xTaskCreate(tls_task, "TLS TaskS", 8096, NULL, 1, NULL);
     vTaskStartScheduler();
 
     for(;;);

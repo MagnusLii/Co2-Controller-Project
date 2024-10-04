@@ -71,10 +71,9 @@ TLSWrapper::~TLSWrapper() {
 }
 
 void TLSWrapper::send_request(const std::string& endpoint, const std::string& request){
-    const uint8_t cert[] = TLS_CERTIFICATE;
     TLSWRAPPERprintf("TLSWrapper::send_request: %s\n", request.c_str());
-    send_tls_request(cert, sizeof(cert), endpoint.c_str(), request.c_str(), CONNECTION_TIMEOUT_MS, tls_client); // custom made.
-    run_tls_client_test(cert, sizeof(cert), endpoint.c_str(), request.c_str(), CONNECTION_TIMEOUT_MS); // Verified to work
+    send_tls_request((uint8_t*)certificate.c_str(), certificate.length() + 1, endpoint.c_str(), request.c_str(), CONNECTION_TIMEOUT_MS, tls_client); // custom made.
+    // run_tls_client_test(cert, sizeof(cert), endpoint.c_str(), request.c_str(), CONNECTION_TIMEOUT_MS); // Verified to work
 }
 
 void TLSWrapper::emptyresponseBuffer(QueueHandle_t queue_where_to_store_msg) {  

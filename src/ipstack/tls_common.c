@@ -26,7 +26,7 @@ typedef struct TLS_CLIENT_T_ {
     int timeout;
     char *response;
     bool response_stored;
-    bool initialized = false;
+    bool initialized;
 } TLS_CLIENT_T;
 
 // Static variable for TLS configuration
@@ -272,11 +272,10 @@ bool run_tls_client_test(const uint8_t *cert, size_t cert_len, const char *serve
 bool send_tls_request(const uint8_t *cert, size_t cert_len, const char *server, const char *request, int timeout, TLS_CLIENT_T *state) {
     tls_config = altcp_tls_create_config_client(cert, cert_len);
     assert(tls_config);
+
+    mbedtls_ssl_conf_authmode((mbedtls_ssl_config *)tls_config, MBEDTLS_SSL_VERIFY_REQUIRED);
     
-    if (!state->initialized) {
-        state = tls_client_init(); // TODO: May cause problems on reinit.
-        return false;
-    }
+    state = tls_client_init(); // TODO: May cause problems on reinit.
 
     state->http_request = request;
     state->timeout = timeout;
@@ -290,7 +289,7 @@ bool send_tls_request(const uint8_t *cert, size_t cert_len, const char *server, 
     }
 
     int err = state->error;
-    // free(state); // deconstructor will free the state
+    free(state); // deconstructor will free the state
     altcp_tls_free_config(tls_config);
 
     return err == 0;
