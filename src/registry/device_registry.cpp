@@ -160,7 +160,7 @@ void TestWriter::add_send_handle(QueueHandle_t handle) { send_handle = handle; }
 
 void TestWriter::send() const {
     Command cmd{WriteType::CO2_TARGET, {0}};
-    cmd.value.f32 = 800.0;
+    cmd.value.f32 = 400.0;
     for (;;) {
         xQueueSend(send_handle, &cmd, 0);
         cmd.value.f32 = 400.0;
