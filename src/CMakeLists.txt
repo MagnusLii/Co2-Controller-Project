@@ -8,8 +8,8 @@ add_executable(${ProjectName}
 #        display/ssd1306.cpp
         display/ssd1306os.cpp
 
-        eeprom/eeprom.c
-        eeprom/logHandler.cpp
+        fan/fan_controller.cpp
+        display/screen.cpp
 
         ipstack/IPStack.cpp
         ipstack/tls_common.c
@@ -30,10 +30,9 @@ add_executable(${ProjectName}
 
         wireless-tasks/connection_handler.cpp
         wireless-tasks/api_tasks.cpp
-        ../inc/wireless_tasks/connection_defines.h
         eeprom/eeprom_tasks.cpp
-        eeprom/eeprom_tasks.cpp
-        ../inc/eeprom/eeprom_tasks.h
+        rotary/rotary.cpp
+        eeprom/logHandler.cpp
 )
 
 target_include_directories(${ProjectName} PRIVATE
@@ -41,6 +40,7 @@ target_include_directories(${ProjectName} PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}/test
         ${INCLUDE_DIR}
         ${INCLUDE_DIR}/display
+        ${INCLUDE_DIR}/fan
         ${INCLUDE_DIR}/eeprom
         ${INCLUDE_DIR}/i2c
         ${INCLUDE_DIR}/ipstack
@@ -50,6 +50,8 @@ target_include_directories(${ProjectName} PRIVATE
         ${INCLUDE_DIR}/registry
         ${INCLUDE_DIR}/uart
         ${INCLUDE_DIR}/wireless_tasks
+        ${INCLUDE_DIR}/rotary
+        ${INCLUDE_DIR}/eeprom_tasks
 )
 
 target_compile_definitions(${ProjectName} PRIVATE

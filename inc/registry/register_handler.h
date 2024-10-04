@@ -3,36 +3,61 @@
 #define REGISTERHANDLER_H_
 
 #include "FreeRTOS.h"
+#include "PicoI2C.h"
 #include "modbus_register.h"
 #include "portmacro.h"
+#include "pressure_register.h"
 #include "queue.h"
 #include "timers.h"
-#include "uart_instance.h"
-#include "PicoI2C.h"
-#include "pressure_register.h"
 
 #include <algorithm>
 #include <string>
 #include <vector>
 
-enum class ReadingType { CO2, TEMPERATURE, REL_HUMIDITY, FAN_COUNTER, PRESSURE, UNSET };
+enum class ReadingType {
+    UNSET,
+    CO2,
+    CO2_TARGET,
+    TEMPERATURE,
+    REL_HUMIDITY,
+    FAN_COUNTER,
+    FAN_SPEED,
+    PRESSURE,
+    ROT_SW,
+    CW,
+    CCW
+};
 
-enum class WriteType { FAN_SPEED, UNSET };
+enum class WriteType {
+    UNSET,
+    CO2_TARGET,
+    FAN_SPEED,
+    MODE_SET
+};
 
 struct Reading {
     ReadingType type;
     union {
-        uint32_t u32;
-        float f32;
-        int32_t i32;
-        uint16_t u16;
-        int16_t i16;
+        uint32_t u32; // Float readings get initially pulled as uint32_t
+        float f32;    // CO2, CO2 target, Temperature, Humidity
+        int32_t i32;  // Probably not used
+        uint16_t u16; // Fan speed, Fan counter, Mode set
+        int16_t i16;  // Pressure
+    } value;
+};
+
+struct Command {
+    WriteType type;
+    union {
+        float f32;    // CO2 target
+        uint16_t u16; // Fan speed
     } value;
 };
 
 class RegisterHandler {
   public:
     virtual ~RegisterHandler() = default;
+    std::string get_name();
 
   protected:
     std::string name;
@@ -43,14 +68,14 @@ class ReadRegisterHandler : public RegisterHandler {
     void add_subscriber(QueueHandle_t subscriber);
     void remove_subscriber(QueueHandle_t subscriber);
     void send_reading();
+    void send_reading_from_isr();
     [[nodiscard]] ReadingType get_type() const;
-    std::string get_name();
-    virtual void get_reading() = 0;
 
   protected:
-    Reading reading{ReadingType::UNSET, {0}};
+    virtual void get_reading() = 0;
 
-    const uint16_t reading_interval = 2000; // ms
+    Reading reading{ReadingType::UNSET, {0}};
+    const uint16_t reading_interval = 1000; // ms
 
   private:
     std::vector<QueueHandle_t> subscribers;
@@ -58,12 +83,13 @@ class ReadRegisterHandler : public RegisterHandler {
 
 class ModbusReadHandler final : public ReadRegisterHandler {
   public:
-    ModbusReadHandler(shared_modbus client, uint8_t device_address, uint16_t register_address,
+    ModbusReadHandler(shared_modbus controller, uint8_t device_address, uint16_t register_address,
                       uint8_t nr_of_registers, bool holding_register, ReadingType type,
-                      const std::string& name = "ModbusReadHandler");
-    void get_reading() override;
+                      const std::string &name = "ModbusReadHandler");
 
   private:
+    void get_reading() override;
+
     void mb_read();
     static void mb_read_task(void *pvParameters) {
         auto *handler = static_cast<ModbusReadHandler *>(pvParameters);
@@ -74,26 +100,25 @@ class ModbusReadHandler final : public ReadRegisterHandler {
     ReadRegister reg;
 };
 
-
 class WriteRegisterHandler : public RegisterHandler {
   public:
     [[nodiscard]] QueueHandle_t get_write_queue_handle() const;
-    virtual void write_to_reg(uint32_t value) = 0;
-    std::string get_name();
 
   protected:
+    virtual void write_to_reg(uint32_t value) = 0;
+
     QueueHandle_t write_queue = nullptr;
     WriteType type = WriteType::UNSET;
 };
 
-class ModbusWriteHandler final : public WriteRegisterHandler {
+class ModbusWriteHandler : public WriteRegisterHandler {
   public:
     ModbusWriteHandler(shared_modbus controller, uint8_t device_address, uint16_t register_address,
-                       uint8_t nr_of_registers, WriteType type, const std::string& name = "ModbusWriteHandler");
-
-    void write_to_reg(uint32_t value) override;
+                       uint8_t nr_of_registers, WriteType type, const std::string &name = "ModbusWriteHandler");
 
   private:
+    void write_to_reg(uint32_t value) override;
+
     void mb_write();
     static void mb_write_task(void *pvParameters) {
         auto *handler = static_cast<ModbusWriteHandler *>(pvParameters);
@@ -109,16 +134,18 @@ class I2CHandler final : public ReadRegisterHandler {
     I2CHandler(shared_i2c i2c_i, uint8_t device_address, ReadingType rtype = ReadingType::UNSET,
                const std::string &name = "I2CHandler");
 
-    void get_reading() override;
   private:
+    void get_reading() override;
+
     void i2c_read();
     static void i2c_read_task(void *pvParameters) {
-      auto *handler = static_cast<I2CHandler *>(pvParameters);
-      handler->i2c_read();
+        auto *handler = static_cast<I2CHandler *>(pvParameters);
+        handler->i2c_read();
     }
 
     shared_i2c i2c;
-    PressureRegister reg; // Only I2C dev reg we have so lets go and just specify it
+    // Only I2C dev reg we have so lets go and just specify it for now
+    PressureRegister reg;
 };
 
 #endif /* REGISTERHANDLER_H_ */
