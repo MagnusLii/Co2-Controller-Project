@@ -28,25 +28,23 @@
 
 #define SEND_QUEUE_SIZE 64
 #define RECEIVE_QUEUE_SIZE 64
-#define CONNECTION_TIMEOUT_MS 10000
-#define MAX_BUFFER_SIZE 2048
+#define CONNECTION_TIMEOUT_MS 15000
+#define MAX_BUFFER_SIZE 2048 // obsolete
 #define POLL_TIME_S 10
 
 struct Message {
-    std::vector<unsigned char> data;
+    std::string data;
     int length;
 };
 
 class TLSWrapper {
 public:
-    // Enum for connection status
     enum class ConnectionStatus {
         CONNECTED,
         DISCONNECTED,
         ERROR
     };
 
-    // Enum for order (API fields)
     enum class ApiFields {
         CO2_LEVEL,
         RELATIVE_HUMIDITY,
@@ -56,30 +54,25 @@ public:
         TIMESTAMP,
         DEVICE_STATUS,
         UNDEFINED
-    };
+    };    
 
-    TLSWrapper(const char *ssid, const char *password, char* certificate, const int certlen, const uint32_t countryCode);
+    TLSWrapper(const std::string& cert, const std::string& ssid, const std::string& password, uint32_t countryCode);
+    ~TLSWrapper();
+    
+    void send_request(const std::string& endpoint, const std::string& request);
+    
+    void emptyresponseBuffer(QueueHandle_t queue_where_to_store_msg);
 
-    void connect(const char* endpoint, const int port);
-
+    void createFieldUpdateRequest(Message &messageContainer, const float values[]);
+    void createCommandRequest(Message &messageContainer, const char* command);
 
 private:
-    char* certificate;
-    int certificateLength;
+    const std::string certificate;
+    const std::string ssid;
+    const std::string password;
+    const uint32_t countryCode;
     ConnectionStatus connectionStatus = ConnectionStatus::DISCONNECTED;
-
     TLS_CLIENT_T* tls_client;
-
 };
-
-
-
-
-
-
-
-
-
-
 
 #endif //TLSWRAPPER_H

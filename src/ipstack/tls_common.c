@@ -5,25 +5,28 @@
  */
 
 /* Include necessary libraries */
-#include <string.h> 
-#include <time.h> 
+#include <string.h>
+#include <time.h>
 
 #include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
-#include "lwip/pbuf.h"         
-#include "lwip/altcp_tcp.h"     
-#include "lwip/altcp_tls.h"    
-#include "lwip/dns.h"          
+#include "lwip/pbuf.h"
+#include "lwip/altcp_tcp.h"
+#include "lwip/altcp_tls.h"
+#include "lwip/dns.h"
 #include "FreeRTOS.h"
 #include "task.h"
 
-// Structure representing a TLS client state
+// MODIFIED to add response buffer for response storage
 typedef struct TLS_CLIENT_T_ {
-    struct altcp_pcb *pcb;   // Pointer to the ALT-TCP (PCB: Protocol Control Block)
-    bool complete;           // Flag to check if operation is complete
-    int error;               // Holds error code, if any
-    const char *http_request; // HTTP request to be sent to the server
-    int timeout;             // Timeout duration in seconds
+    struct altcp_pcb *pcb;
+    bool complete;
+    int error;
+    const char *http_request;
+    int timeout;
+    char *response;
+    bool response_stored;
+    bool initialized = false;
 } TLS_CLIENT_T;
 
 // Static variable for TLS configuration
@@ -51,6 +54,57 @@ static err_t tls_client_close(void *arg) {
     return err;  // Return the final status
 }
 
+static err_t tls_client_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *p, err_t err) {
+    TLS_CLIENT_T *state = (TLS_CLIENT_T*)arg;
+    if (!p) {
+        printf("connection closed\n");
+        return tls_client_close(state);
+    }
+
+    if (p->tot_len > 0) {
+        /* For simplicity this examples creates a buffer on stack the size of the data pending here,
+           and copies all the data to it in one go.
+           Do be aware that the amount of data can potentially be a bit large (TLS record size can be 16 KB),
+           so you may want to use a smaller fixed size buffer and copy the data to it using a loop, if memory is a concern */
+        //char buf[p->tot_len + 1];
+        char *buf= (char *) malloc(p->tot_len + 1);
+
+        pbuf_copy_partial(p, buf, p->tot_len, 0);
+        buf[p->tot_len] = 0;
+
+        printf("***\nnew data received from server:\n***\n\n%s\n", buf);
+
+        // copy response to state
+        if (state->response == NULL) {
+            state->response = (char *)malloc(p->tot_len + 1);
+            if (state->response != NULL) {
+            strcpy(state->response, buf);
+            state->response_stored = true;
+            } else {
+            printf("failed to allocate memory for response\n");
+            }
+        } else {
+
+            size_t current_len = strlen(state->response);
+            char *new_response = (char *)realloc(state->response, current_len + p->tot_len + 1);
+            if (new_response != NULL) {
+            state->response = new_response;
+            strcat(state->response, buf);
+            state->response_stored = true;
+            } else {
+            printf("failed to reallocate memory for response\n");
+            }
+        }
+
+        free(buf);
+
+        altcp_recved(pcb, p->tot_len);
+    }
+    pbuf_free(p);
+
+    return ERR_OK;
+}
+
 /* Callback when the TLS client successfully connects to the server */
 static err_t tls_client_connected(void *arg, struct altcp_pcb *pcb, err_t err) {
     TLS_CLIENT_T *state = (TLS_CLIENT_T*)arg;  // Retrieve the client state
@@ -67,6 +121,7 @@ static err_t tls_client_connected(void *arg, struct altcp_pcb *pcb, err_t err) {
         printf("error writing data, err=%d", err);
         return tls_client_close(state);  // Close the connection
     }
+
 
     return ERR_OK;  // Return OK on success
 }
@@ -85,37 +140,6 @@ static void tls_client_err(void *arg, err_t err) {
     printf("tls_client_err %d\n", err);
     tls_client_close(state);  // Close the connection
     state->error = PICO_ERROR_GENERIC;  // Set a generic error
-}
-
-/* Receive callback triggered when data is received from the server */
-static err_t tls_client_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *p, err_t err) {
-    TLS_CLIENT_T *state = (TLS_CLIENT_T*)arg;  // Retrieve the client state
-
-    if (!p) {  // If the connection is closed by the server
-        printf("connection closed\n");
-        return tls_client_close(state);  // Close the connection
-    }
-
-    if (p->tot_len > 0) {  // If there is data to read
-        // Allocate a buffer to hold the data
-        char *buf = (char *) malloc(p->tot_len + 1);
-
-        // Copy the received data into the buffer
-        pbuf_copy_partial(p, buf, p->tot_len, 0);
-        buf[p->tot_len] = 0;  // Null-terminate the string
-
-        // Print the received data
-        printf("***\nnew data received from server:\n***\n\n%s\n", buf);
-        free(buf);  // Free the allocated buffer
-
-        // Acknowledge that the data has been received
-        altcp_recved(pcb, p->tot_len);
-    }
-
-    // Free the packet buffer
-    pbuf_free(p);
-
-    return ERR_OK;  // Return OK
 }
 
 /* Function to initiate a connection to a server given its IP address */
@@ -227,14 +251,14 @@ bool run_tls_client_test(const uint8_t *cert, size_t cert_len, const char *serve
 
     // Main loop: wait for the connection to complete or time out
     while (!state->complete) {
-        #if PICO_CYW43_ARCH_POLL
-            // Poll Wi-Fi and TCP/IP stack (only necessary for polling mode)
+#if PICO_CYW43_ARCH_POLL
+        // Poll Wi-Fi and TCP/IP stack (only necessary for polling mode)
             cyw43_arch_poll();
             cyw43_arch_wait_for_work_until(make_timeout_time_ms(1000));
-        #else
-            // In FreeRTOS mode, just delay
-            vTaskDelay(1000);
-        #endif
+#else
+        // In FreeRTOS mode, just delay
+        vTaskDelay(1000);
+#endif
     }
 
     // Store the error code and free resources
@@ -243,4 +267,31 @@ bool run_tls_client_test(const uint8_t *cert, size_t cert_len, const char *serve
     altcp_tls_free_config(tls_config);
 
     return err == 0;  // Return whether the connection was successful
+}
+
+bool send_tls_request(const uint8_t *cert, size_t cert_len, const char *server, const char *request, int timeout, TLS_CLIENT_T *state) {
+    tls_config = altcp_tls_create_config_client(cert, cert_len);
+    assert(tls_config);
+    
+    if (!state->initialized) {
+        state = tls_client_init(); // TODO: May cause problems on reinit.
+        return false;
+    }
+
+    state->http_request = request;
+    state->timeout = timeout;
+
+    if (!tls_client_open(server, state)) {
+        return false;
+    }
+
+    while (!state->complete) {
+        vTaskDelay(1000);
+    }
+
+    int err = state->error;
+    // free(state); // deconstructor will free the state
+    altcp_tls_free_config(tls_config);
+
+    return err == 0;
 }

@@ -32,7 +32,6 @@ add_executable(${ProjectName}
         ipstack/picow_tls_client.c
 
         wireless-tls/TLSWrapper.cpp
-        wireless-tasks/connection_defines.h
 )
 
 target_include_directories(${ProjectName} PRIVATE
