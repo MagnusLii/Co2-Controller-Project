@@ -3,11 +3,11 @@
 #include <string>
 #include <algorithm>
 #include <cstring>
-#include "eeprom.h"
 #include "logHandler.h"
 /*#include "commhandler.h"
 #include "debugprint.h"*/
 #include <memory.h>
+#include "logger.hpp"
 
 #define CRC_LEN 2
 #define LOG_LEN 6                     // Does not include CRC
@@ -120,7 +120,7 @@ void LogHandler::clearAllLogs(const LogType logType){
     if (logType == LOGTYPE_MSG_LOG){
         logAddr = LOG_START_ADDR;
         for (int i = 0; i < MAX_LOGS; i++){
-            eeprom_write_byte(logAddr, 0);
+            //eeprom_write_byte(logAddr, 0);
             logAddr += LOG_SIZE;
         }
         this->unusedLogAddr = LOG_START_ADDR;
@@ -128,7 +128,7 @@ void LogHandler::clearAllLogs(const LogType logType){
     else if (logType == LOGTYPE_REBOOT_STATUS){
         logAddr = REBOOT_STATUS_START_ADDR;
         for (int i = 0; i < MAX_LOGS; i++){
-            eeprom_write_byte(logAddr, 0);
+            //eeprom_write_byte(logAddr, 0);
             logAddr += LOG_SIZE;
         }
         this->unusedRebootStatusAddr = REBOOT_STATUS_START_ADDR;
@@ -143,10 +143,10 @@ void LogHandler::findFirstAvailableLog(const LogType logType){
     case LOGTYPE_MSG_LOG:
         logAddr = LOG_START_ADDR;
         for (int i = 0; i < MAX_LOGS; i++){
-            if ((int)eeprom_read_byte(logAddr) == 0){
-                this->unusedLogAddr = logAddr;
-                return;
-            }
+            //if ((int)eeprom_read_byte(logAddr) == 0){
+            //    this->unusedLogAddr = logAddr;
+            //    return;
+            //}
             logAddr += LOG_SIZE;
         }
 
@@ -157,10 +157,10 @@ void LogHandler::findFirstAvailableLog(const LogType logType){
     case LOGTYPE_REBOOT_STATUS:
         logAddr = REBOOT_STATUS_START_ADDR;
         for (int i = 0; i < MAX_LOGS; i++){
-            if ((int)eeprom_read_byte(logAddr) == 0){
-                this->unusedRebootStatusAddr = logAddr;
-                return;
-            }
+            //if ((int)eeprom_read_byte(logAddr) == 0){
+            //    this->unusedRebootStatusAddr = logAddr;
+            //    return;
+            //}
             logAddr += LOG_SIZE;
         }
 
@@ -205,7 +205,7 @@ void LogHandler::enterLogToEeprom(uint8_t *base8Array, int *arrayLen, const int 
     uint8_t crcAppendedArray[*arrayLen + CRC_LEN];
     memcpy(crcAppendedArray, base8Array, *arrayLen);
     appendCrcToBase8Array(crcAppendedArray, arrayLen);
-    eeprom_write_page(logAddr, crcAppendedArray, *arrayLen);
+    //eeprom_write_page(logAddr, crcAppendedArray, *arrayLen);
 }
 
 void LogHandler::createLogArray(uint8_t *array, int messageCode, uint32_t timestamp){
@@ -275,7 +275,7 @@ void printValidLogs(LogType logType){
     if (logType == LOGTYPE_MSG_LOG){
         logAddr = LOG_START_ADDR;
         for (int i = 0; i < MAX_LOGS; i++){
-        eeprom_read_page(logAddr, logData, LOG_ARR_LEN);
+        //eeprom_read_page(logAddr, logData, LOG_ARR_LEN);
         if (logData[LOG_USE_STATUS] == 1 && verifyDataIntegrity(logData, tmp_log_array_length) == true){
             uint8_t messageCode = logData[MESSAGE_CODE];
             uint32_t timestamp = (logData[TIMESTAMP_MSB] << 24) | (logData[TIMESTAMP_MSB1] << 16) | (logData[TIMESTAMP_MSB2] << 8) | logData[TIMESTAMP_LSB];
@@ -288,7 +288,7 @@ void printValidLogs(LogType logType){
     else if (logType == LOGTYPE_REBOOT_STATUS){
         logAddr = REBOOT_STATUS_START_ADDR;
         for (int i = 0; i < MAX_LOGS; i++){
-        eeprom_read_page(logAddr, logData, LOG_ARR_LEN);
+        //eeprom_read_page(logAddr, logData, LOG_ARR_LEN);
         if (logData[LOG_USE_STATUS] == 1 && verifyDataIntegrity(logData, tmp_log_array_length) == true){
             uint8_t messageCode = logData[MESSAGE_CODE];
             uint32_t timestamp = (logData[TIMESTAMP_MSB] << 24) | (logData[TIMESTAMP_MSB1] << 16) | (logData[TIMESTAMP_MSB2] << 8) | logData[TIMESTAMP_LSB];
@@ -306,6 +306,7 @@ void printValidLogs(LogType logType){
     return;
 }*/
 
+/*
 void LogHandler::receive() {
     for (;;) {
         Reading reading;
@@ -321,8 +322,9 @@ void LogHandler::receive() {
         }
     }
 }
+*/
 
-QueueHandle_t LogHandler::get_queue_handle() const { return receiver; }
+//QueueHandle_t LogHandler::get_queue_handle() const { return receiver; }
 
 int createCredentialArray(std::string str, uint8_t *arr){
     int length = str.length();
@@ -359,10 +361,14 @@ void LogHandler::storeData( float* CO2,  float* temperature,  float* rel_humidit
     appendCrcToBase8Array(rel_humARR, &rhLen);
     appendCrcToBase8Array(pressureArr, &pressureLen);
 
-    eeprom_write_page(this->unusedCommConfigAddr + (DATA_ARR_SIZE * CARBONDIOXIDE), co2Arr,co2Len);
-    eeprom_write_page(this->unusedCommConfigAddr + (DATA_ARR_SIZE * TEMPERATURE), tempArr,tempLen);
-    eeprom_write_page(this->unusedCommConfigAddr + (DATA_ARR_SIZE * REL_HUMIDITY),rel_humARR, rhLen);
-    eeprom_write_page(this->unusedCommConfigAddr + (DATA_ARR_SIZE * PRESSURE), pressureArr,pressureLen);
+    logger.write_page(this->unusedCommConfigAddr + (DATA_ARR_SIZE * CARBONDIOXIDE), co2Arr,co2Len);
+    logger.write_page(this->unusedCommConfigAddr + (DATA_ARR_SIZE * TEMPERATURE), tempArr,tempLen);
+    logger.write_page(this->unusedCommConfigAddr + (DATA_ARR_SIZE * REL_HUMIDITY),rel_humARR, rhLen);
+    logger.write_page(this->unusedCommConfigAddr + (DATA_ARR_SIZE * PRESSURE), pressureArr,pressureLen);
+    //eeprom_write_page(this->unusedCommConfigAddr + (DATA_ARR_SIZE * CARBONDIOXIDE), co2Arr,co2Len);
+    //eeprom_write_page(this->unusedCommConfigAddr + (DATA_ARR_SIZE * TEMPERATURE), tempArr,tempLen);
+    //eeprom_write_page(this->unusedCommConfigAddr + (DATA_ARR_SIZE * REL_HUMIDITY),rel_humARR, rhLen);
+    //eeprom_write_page(this->unusedCommConfigAddr + (DATA_ARR_SIZE * PRESSURE), pressureArr,pressureLen);
 
     LogHandler::incrementUnusedLogIndex(LOGTYPE_COMM_CONFIG);
 
@@ -379,11 +385,15 @@ void LogHandler::fetchData(float *CO2, float *temperature, float *rel_humidity, 
     for (int i = 0; i < 4; ++i) {
         arr[i] = 0;
     }
-
-    eeprom_read_page(this->currentCommConfigAddr + (DATA_ARR_SIZE * 0), co2Arr, DATA_ARR_SIZE);
-    eeprom_read_page(this->currentCommConfigAddr + (DATA_ARR_SIZE * 1), tempArr, DATA_ARR_SIZE);
-    eeprom_read_page(this->currentCommConfigAddr + (DATA_ARR_SIZE * 2), rhArr, DATA_ARR_SIZE);
-    eeprom_read_page(this->currentCommConfigAddr + (DATA_ARR_SIZE * 3), pressureArr, DATA_ARR_SIZE);
+    // halutaan tallentaa co2 target, fanspeed ja mode
+    logger.read_page(this->currentCommConfigAddr + (DATA_ARR_SIZE * 0), co2Arr, DATA_ARR_SIZE);
+    logger.read_page(this->currentCommConfigAddr + (DATA_ARR_SIZE * 1), tempArr, DATA_ARR_SIZE);
+    logger.read_page(this->currentCommConfigAddr + (DATA_ARR_SIZE * 2), rhArr, DATA_ARR_SIZE);
+    logger.read_page(this->currentCommConfigAddr + (DATA_ARR_SIZE * 3), pressureArr, DATA_ARR_SIZE);
+    //eeprom_read_page(this->currentCommConfigAddr + (DATA_ARR_SIZE * 0), co2Arr, DATA_ARR_SIZE);
+    //eeprom_read_page(this->currentCommConfigAddr + (DATA_ARR_SIZE * 1), tempArr, DATA_ARR_SIZE);
+    //eeprom_read_page(this->currentCommConfigAddr + (DATA_ARR_SIZE * 2), rhArr, DATA_ARR_SIZE);
+    //eeprom_read_page(this->currentCommConfigAddr + (DATA_ARR_SIZE * 3), pressureArr, DATA_ARR_SIZE);
 
     char buffer[20]; // Temporary buffer to store string representation of float
 

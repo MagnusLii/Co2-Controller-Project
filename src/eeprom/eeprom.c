@@ -1,5 +1,5 @@
 #include "pico/stdlib.h"
-#include "hardware/i2c.h"
+#include "PicoI2C.h"
 #include <stdio.h>
 #include <stdbool.h>
 

@@ -8,7 +8,6 @@
 #include "connection_handler.h"
 #include "device_registry.h"
 #include "register_handler.h"
-#include "HardwareConst.h"
 #include "hardware/gpio.h"
 #include "hardware/timer.h"
 #include "hardware_const.h"
@@ -25,12 +24,11 @@
 #include "PicoI2C.h"
 #include "connection_handler.h"
 #include "IPStack.h"
-#include <read_runtime_ctr.cpp>
 #include "connection_defines.h"
 #include "api_tasks.h"
 #include "task_defines.h"
 #include "logHandler.h"
-#include "eeprom.h"
+#include "logger.hpp"
 #include "eeprom_tasks.h"
 
 #include <climits>
@@ -45,9 +43,12 @@ struct hw_setup_params {
     shared_uart uart;
     shared_modbus modbus;
     shared_i2c i2c;
+    shared_i2c i2c_0;
     std::shared_ptr<DeviceRegistry> registry;
     std::shared_ptr<Screen> screen;
     std::shared_ptr<Rotary> rotary;
+    std::shared_ptr<Logger> logger;
+    std::shared_ptr<LogHandler> loghandler;
 };
 
 struct sub_setup_params {
@@ -55,7 +56,8 @@ struct sub_setup_params {
     ConnectionHandler *connection_handler;
     std::shared_ptr<Screen> screen;
     std::shared_ptr<Rotary> rotary;
-    LogHandler* loghandler;
+    std::shared_ptr<Logger> logger;
+    std::shared_ptr<LogHandler> loghandler;
 };
 
 void setup_task(void *pvParameters);
@@ -70,20 +72,21 @@ int main() {
                                                         // UART_TX_PIN, UART_RX_PIN, 2)};
     shared_modbus mbctrl;                               // {std::make_shared<ModbusCtrl>(uart_i)};
     shared_i2c i2c_i;                                   //{std::make_shared<PicoI2C>(I2C_NR)};
+    shared_i2c i2c_0;
     auto registry = std::make_shared<DeviceRegistry>(); // {mbctrl, i2c_i};
 
     std::shared_ptr<Screen> screen;
     std::shared_ptr<Rotary> rotary;
-    eeprom_init_i2c(i2c0, 1000000, 5);
+    std::shared_ptr<Logger> logger;
 
-    hw_setup_params hw_params{uart_i, mbctrl, i2c_i, registry, screen, rotary};
-    // sub_setup_params sub_params{registry, NULL, screen};
-    //xTaskCreate(write_to_eeprom_task, "write to eeprom task", 1024, &sub_params, TASK_PRIORITY_LOW, nullptr);
-    //xTaskCreate(read_eeprom_task, "bruh", 1024, &sub_params.loghandler, TASK_PRIORITY_LOW, nullptr);
+    hw_setup_params hw_params{uart_i, mbctrl, i2c_i, i2c_0, registry, screen, rotary, logger};
 
     xTaskCreate(setup_task, "setup_task", 512, &hw_params, TASK_PRIORITY_ABSOLUTE + 1, nullptr);
     // xTaskCreate(subscriber_setup_task, "subscriber_setup_task", 512,
     // &sub_params, tskIDLE_PRIORITY + 3, nullptr);
+
+    xTaskCreate(write_to_eeprom_task, "write to eeprom task", 1024, &hw_params.registry, TASK_PRIORITY_LOW, nullptr);
+    //xTaskCreate(read_eeprom_task, "bruh", 1024, &hw_params, TASK_PRIORITY_LOW, nullptr);
 
     // sendQueue = xQueueCreate(SEND_QUEUE_SIZE, sizeof(Message));
     // receiveQueue = xQueueCreate(RECEIVE_QUEUE_SIZE, sizeof(Message));
@@ -101,14 +104,17 @@ void setup_task(void *pvParameters) {
     params->uart = std::make_shared<Uart_instance>(UART_NR, UART_BAUD, UART_TX_PIN, UART_RX_PIN, UART_BITS);
     params->modbus = std::make_shared<ModbusCtrl>(params->uart);
     params->i2c = std::make_shared<PicoI2C>(I2C_1);
+    params->i2c_0 = std::make_shared<PicoI2C>(I2C_0);
     params->registry->add_shared(params->modbus, params->i2c);
+
+    params->logger = std::make_shared<Logger>(params->i2c_0);
 
     params->screen = std::make_shared<Screen>(params->i2c);
     params->rotary = std::make_shared<Rotary>();
     // params->registry->subscribe_to_handler(ReadingType::CO2,
     // params->screen->get_queue_handle());
 
-    sub_setup_params sub_params{params->registry, NULL, params->screen, params->rotary};
+    sub_setup_params sub_params{params->registry, NULL, params->screen, params->rotary, params->logger, params->loghandler};
     xTaskCreate(subscriber_setup_task, "subscriber_setup_task", 512, &sub_params, TASK_PRIORITY_HIGH, nullptr);
 
     vTaskSuspend(nullptr);

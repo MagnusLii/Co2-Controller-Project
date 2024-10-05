@@ -7,6 +7,9 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "device_registry.h"
+#include "PicoI2C.h"
+#include "task_defines.h"
+#include "logger.hpp"
 /*#include <stdlib.h>
 #include "commhandler.h"*/
 
@@ -60,7 +63,7 @@ typedef enum {
 class LogHandler {
     public:
         // TODO: modify timestammp once RTC is implemented.
-        LogHandler() {
+      LogHandler(Logger logger) : logger(logger) {
             // TODO: Calling member functions in constructor like this is kinda sketchy, rework maybe.
             LogHandler::findFirstAvailableLog(LOGTYPE_MSG_LOG);
             LogHandler::findFirstAvailableLog(LOGTYPE_REBOOT_STATUS);
@@ -84,6 +87,7 @@ class LogHandler {
         [[nodiscard]] QueueHandle_t get_queue_handle() const;
         QueueHandle_t get_receiver(){return receiver;};
 
+
     private:
         //std::shared_ptr<CommHandler> commHandler;
         int unusedLogAddr;
@@ -92,11 +96,32 @@ class LogHandler {
         int unusedCommConfigAddr;
         int currentCommConfigAddr;
         QueueHandle_t receiver;
+        Logger logger;
         void receive();
         static void receive_task(void *pvParameters) {
             auto *subscriber = static_cast<LogHandler *>(pvParameters);
             subscriber->receive();
         }
+};
+
+class I2CHandler_read final : public ReadRegisterHandler {
+      public:
+        I2CHandler_read(shared_i2c i2c_0, uint8_t device_address, ReadingType rtype = ReadingType::UNSET,
+                   const std::string &name = "I2CHandler");
+
+      private:
+        void get_reading() override;
+
+        void i2c_read();
+        static void i2c_read_task(void *pvParameters) {
+            auto *handler = static_cast<I2CHandler_read *>(pvParameters);
+            handler->i2c_read();
+        }
+
+
+        shared_i2c i2c;
+        // Only I2C dev reg we have so lets go and just specify it for now
+        PressureRegister reg;
 };
 
 uint16_t crc16(const uint8_t *data, size_t length);

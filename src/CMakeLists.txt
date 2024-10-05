@@ -32,7 +32,7 @@ add_executable(${ProjectName}
         wireless-tasks/api_tasks.cpp
         eeprom/eeprom_tasks.cpp
         rotary/rotary.cpp
-        eeprom/logHandler.cpp
+        eeprom/logger.cpp
 )
 
 target_include_directories(${ProjectName} PRIVATE
@@ -51,7 +51,7 @@ target_include_directories(${ProjectName} PRIVATE
         ${INCLUDE_DIR}/uart
         ${INCLUDE_DIR}/wireless_tasks
         ${INCLUDE_DIR}/rotary
-        ${INCLUDE_DIR}/eeprom_tasks
+        ${INCLUDE_DIR}/logger
 )
 
 target_compile_definitions(${ProjectName} PRIVATE
