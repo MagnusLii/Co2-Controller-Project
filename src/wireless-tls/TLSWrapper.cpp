@@ -4,7 +4,7 @@
 #include "task.h"
 #include "queue.h"
 #include "register_handler.h"
-//#include "tls_common.h"
+#include "tls_common.h"
 #include "debugPrints.h"
 #include <cstdint>
 #include <memory>
@@ -23,6 +23,8 @@
 #include "lwip/dns.h"
 #include "connection_defines.h"
 #include "debugPrints.h"
+#include <algorithm>
+#include "task_defines.h"
 
 const char* FIELD_NAMES[] = {
     "&field1=",
@@ -34,7 +36,7 @@ const char* FIELD_NAMES[] = {
     "&field7=",
     "&field8="
 };
-    TLS_CLIENT_T* tls_client;
+    //TLS_CLIENT_T* tls_client;
 TLSWrapper::TLSWrapper(const std::string& ssid, const std::string& password, uint32_t countryCode)
     :
      ssid(ssid),
@@ -48,60 +50,55 @@ TLSWrapper::TLSWrapper(const std::string& ssid, const std::string& password, uin
         }
         cyw43_arch_enable_sta_mode();
 
-        TLSWRAPPERprintf("TLSWrapper::TLSWrapper: Connecting to wireless\n");
-        if (cyw43_arch_wifi_connect_timeout_ms(ssid.c_str(), password.c_str(), CYW43_AUTH_WPA2_AES_PSK, CONNECTION_TIMEOUT_MS) != 0) {
-            TLSWRAPPERprintf("TLSWrapper::TLSWrapper: failed to connect\n");
-        } else {
-            TLSWRAPPERprintf("TLSWrapper::TLSWrapper: connected\n");
-        }
+
+        bool connected = false;
+        int retries = 0;
+        do {
+
+            TLSWRAPPERprintf("TLSWrapper::TLSWrapper: Connecting to wireless\n");
+            connected = cyw43_arch_wifi_connect_timeout_ms(ssid.c_str(), password.c_str(), CYW43_AUTH_WPA2_AES_PSK, CONNECTION_TIMEOUT_MS);
+            if ( connected != 0) {
+                TLSWRAPPERprintf("TLSWrapper::TLSWrapper: failed to connect\n");
+            } else {
+                TLSWRAPPERprintf("TLSWrapper::TLSWrapper: connected\n");
+            }
+            retries++;
+        } while (connected != 0 && retries < 5);
         reading_queue = xQueueCreate(20, sizeof(Reading));
+
+        TLSWrapper_private_queue = xQueueCreate(5, sizeof(Message));
+
+        xTaskCreate(api_call_creator, "Send task", 1024, this, TaskPriority::LOW, nullptr);
+        xTaskCreate(testtask, "test", 256, this, TaskPriority::LOW, nullptr);
 }
 
 TLSWrapper::~TLSWrapper() {
-    if (tls_client) {
-        // Free the response if it was allocated
-        if (tls_client->response) {
-            free(tls_client->response);
-            tls_client->response = nullptr;
-        }
-
-        // Free the tls_client structure itself
-        free(tls_client);
-        tls_client = nullptr;
-    }
+    // nothing.
 }
 
 void TLSWrapper::send_request(const std::string& endpoint, const std::string& request){
     TLSWRAPPERprintf("TLSWrapper::send_request: %s\n", request.c_str());
-    send_tls_request(endpoint.c_str(), request.c_str(), CONNECTION_TIMEOUT_MS, tls_client); // custom made.
-    // run_tls_client_test(cert, sizeof(cert), endpoint.c_str(), request.c_str(), CONNECTION_TIMEOUT_MS); // Verified to work
+    send_tls_request(endpoint.c_str(), request.c_str(), CONNECTION_TIMEOUT_MS);
 }
 
-void TLSWrapper::empty_response_buffer(QueueHandle_t queue_where_to_store_msg) {  
-    Message msg;
+void TLSWrapper::send_request_and_get_response(const std::string& endpoint, const std::string& request){
 
-    // Check if the response is not NULL
-    if (tls_client->response != NULL) {
-        msg.data = strdup(tls_client->response);
-        msg.length = strlen(tls_client->response);
-        if (msg.data.length() != 0) {
-            TLSWRAPPERprintf("Failed to allocate memory for msg.data\n");
-            return;
-        }
-        tls_client->response_stored = false;
-        xQueueSend(queue_where_to_store_msg, &msg, 0);
-    } else {
-        msg.data = strdup(""); // TODO: Remove?
-    }
+    char response[1024];
+    size_t response_len = 0;
+
+    TLSWRAPPERprintf("TLSWrapper::send_request: %s\n", request.c_str());
+    send_tls_request_and_get_response(endpoint.c_str(), request.c_str(), CONNECTION_TIMEOUT_MS, response, &response_len);
+
+    TLSWRAPPERprintf("TLSWrapper::response: %s\n %d", response, response_len);
 }
 
-void TLSWrapper::create_field_update_request(Message &messageContainer, const float values[]){
+void TLSWrapper::create_field_update_request(Message &messageContainer, const std::array<Reading, 8> &values){
     messageContainer.data = ""; // Clear message container
     
     messageContainer.data += "GET /update?api_key=";
     messageContainer.data += API_KEY;
 
-    for (int i = 0; i < (int)TLSWrapper::ApiFields::UNDEFINED; i++) {
+    for (int i = 0; i < (int)ReadingType::end; i++) {
         messageContainer.data += FIELD_NAMES[i];
         char buffer[69];
         snprintf(buffer, sizeof(buffer), "%.2f", values[i]);
@@ -113,8 +110,6 @@ void TLSWrapper::create_field_update_request(Message &messageContainer, const fl
     messageContainer.data += THINGSPEAK_HOSTNAME;
     messageContainer.data += "Connection: close\r\n";
     messageContainer.data += "\r\n";
-
-    messageContainer.length = messageContainer.data.length();
 
     return;
 }
@@ -129,8 +124,6 @@ void TLSWrapper::create_command_request(Message &messageContainer, const char* c
     messageContainer.data += "\r\n";
     messageContainer.data += "api_key=" TALK_BACK_API_KEY;
 
-    messageContainer.length = messageContainer.data.length();
-
     return;
 }
 
@@ -140,4 +133,58 @@ void TLSWrapper::set_write_handle(QueueHandle_t queue) {
 
 QueueHandle_t TLSWrapper::get_read_handle(void) {
     return reading_queue;
+}
+
+void TLSWrapper::api_call_creator_() {
+    Message msg;
+    Reading reading;
+
+    std::array<Reading, 8> values;
+
+    for (auto value : values){
+        value = {ReadingType::UNSET, {0}};
+    }
+
+    for (;;) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+
+        while (xQueueReceive(reading_queue, &reading, 0) == pdPASS) {
+            switch (reading.type) {
+                case ReadingType::CO2:
+                    values[(int)ReadingType::CO2 - 1] = reading;
+                    break;
+                case ReadingType::CO2_TARGET:
+                    values[(int)ReadingType::CO2_TARGET - 1] = reading;
+                    break;
+                case ReadingType::FAN_SPEED:
+                    values[(int)ReadingType::FAN_SPEED - 1] = reading;
+                    break;
+                case ReadingType::REL_HUMIDITY:
+                    values[(int)ReadingType::REL_HUMIDITY - 1] = reading;
+                    break;
+                case ReadingType::TEMPERATURE:
+                    values[(int)ReadingType::TEMPERATURE - 1] = reading;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        create_field_update_request(msg, values);
+
+        if (msg.data.length() > 0) {
+            TLSWRAPPERprintf("Writing to queue");
+            xQueueSend(TLSWrapper_private_queue, &msg, 0);
+        }
+    }
+}
+
+void TLSWrapper::testtask_(void *asd){
+    Message msg;
+    for(;;){
+        vTaskDelay(1000);
+        if (xQueueReceive(TLSWrapper_private_queue, &msg, 0)){
+            send_request(THINGSPEAK_HOSTNAME, msg.data);
+        }
+    }
 }

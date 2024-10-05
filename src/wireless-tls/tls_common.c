@@ -27,6 +27,7 @@ typedef struct TLS_CLIENT_T_ {
     int timeout;
     char *response;
     bool response_stored;
+    size_t response_len;
     bool initialized;
 } TLS_CLIENT_T;
 
@@ -81,6 +82,7 @@ static err_t tls_client_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *p, e
             if (state->response != NULL) {
             strcpy(state->response, buf);
             state->response_stored = true;
+            state->response_len = p->tot_len;
             } else {
             printf("failed to allocate memory for response\n");
             }
@@ -92,6 +94,7 @@ static err_t tls_client_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *p, e
             state->response = new_response;
             strcat(state->response, buf);
             state->response_stored = true;
+            state->response_len += p->tot_len;
             } else {
             printf("failed to reallocate memory for response\n");
             }
@@ -275,13 +278,14 @@ void configure_tls(uint8_t *cert, size_t cert_len) {
     tls_config = altcp_tls_create_config_client(cert, cert_len);
 }
 
-bool send_tls_request(const char *server, const char *request, int timeout, TLS_CLIENT_T *state) {
+bool send_tls_request(const char *server, const char *request, int timeout) {
     tls_config = altcp_tls_create_config_client(TLS_CERTIFICATE, sizeof(TLS_CERTIFICATE));
     assert(tls_config);
 
     mbedtls_ssl_conf_authmode((mbedtls_ssl_config *)tls_config, MBEDTLS_SSL_VERIFY_REQUIRED);
     
-    state = tls_client_init(); // TODO: May cause problems on reinit.
+    TLS_CLIENT_T *state = tls_client_init();
+    // state = tls_client_init(); // TODO: May cause problems on reinit.
 
     state->http_request = request;
     state->timeout = timeout;
@@ -295,7 +299,40 @@ bool send_tls_request(const char *server, const char *request, int timeout, TLS_
     }
 
     int err = state->error;
-    free(state); // deconstructor will free the state
+    free(state);
+    altcp_tls_free_config(tls_config);
+
+    return err == 0;
+}
+
+bool send_tls_request_and_get_response(const char *server, const char *request, int timeout, char *response, size_t *response_len) {
+    tls_config = altcp_tls_create_config_client(TLS_CERTIFICATE, sizeof(TLS_CERTIFICATE));
+    assert(tls_config);
+
+    mbedtls_ssl_conf_authmode((mbedtls_ssl_config *)tls_config, MBEDTLS_SSL_VERIFY_REQUIRED);
+    
+    TLS_CLIENT_T *state = tls_client_init();
+    // state = tls_client_init(); // TODO: May cause problems on reinit.
+
+    state->http_request = request;
+    state->timeout = timeout;
+
+    if (!tls_client_open(server, state)) {
+        return false;
+    }
+
+    while (!state->complete) {
+        vTaskDelay(1000);
+    }
+
+    int err = state->error;
+    if (err == 0 && state->response_stored) {
+        printf("here!");
+        strcpy(response, state->response);
+        *response_len = state->response_len;
+    }
+
+    free(state);
     altcp_tls_free_config(tls_config);
 
     return err == 0;

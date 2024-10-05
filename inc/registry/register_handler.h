@@ -17,12 +17,13 @@
 enum class ReadingType {
     UNSET,
     CO2,
-    CO2_TARGET,
     TEMPERATURE,
     REL_HUMIDITY,
-    FAN_COUNTER,
     FAN_SPEED,
-    PRESSURE
+    CO2_TARGET,
+    FAN_COUNTER,
+    PRESSURE,
+    end
 };
 
 enum class WriteType {

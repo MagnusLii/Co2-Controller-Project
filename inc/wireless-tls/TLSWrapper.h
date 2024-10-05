@@ -31,10 +31,10 @@
 #define CONNECTION_TIMEOUT_MS 15000
 #define MAX_BUFFER_SIZE 2048 // obsolete
 #define POLL_TIME_S 10
+#define READING_SEND_INTERVAL 10000
 
 struct Message {
     std::string data;
-    int length;
 };
 
 class TLSWrapper {
@@ -44,40 +44,40 @@ public:
         DISCONNECTED,
         ERROR
     };
-
-    enum class ApiFields {
-        CO2_LEVEL,
-        RELATIVE_HUMIDITY,
-        TEMPERATURE,
-        VENT_FAN_SPEED,
-        CO2_SET_POINT,
-        TIMESTAMP,
-        DEVICE_STATUS,
-        UNDEFINED
-    };    
-
     TLSWrapper(const std::string& ssid, const std::string& password, uint32_t countryCode);
     ~TLSWrapper();
-    
-    void send_request(const std::string& endpoint, const std::string& request);
-    
-    void empty_response_buffer(QueueHandle_t queue_where_to_store_msg);
-
-    void create_field_update_request(Message &messageContainer, const float values[]);
-    void create_command_request(Message &messageContainer, const char* command);
-
     void set_write_handle(QueueHandle_t queue);
     QueueHandle_t get_read_handle(void);
 
 private:
-    //const std::string certificate;
+    void send_request(const std::string& endpoint, const std::string& request);
+    void send_request_and_get_response(const std::string& endpoint, const std::string& request);
+
+    void create_field_update_request(Message &messageContainer, const std::array<Reading, 8> &values);
+    void create_command_request(Message &messageContainer, const char* command);
+
+    void api_call_creator_();
+
+
+    static void api_call_creator(void *param){
+        auto *wtfIsThis = static_cast<TLSWrapper*>(param);
+        wtfIsThis->api_call_creator_();
+    }
+
+    void testtask_(void *asd);
+
+    static void testtask(void *param){
+        auto *IhateThis = static_cast<TLSWrapper*>(param);
+        IhateThis->testtask_(param);
+    }
+
     const std::string ssid;
     const std::string password;
     ConnectionStatus connectionStatus = ConnectionStatus::DISCONNECTED;
     const uint32_t countryCode;
-    TLS_CLIENT_T* tls_client;
     QueueHandle_t reading_queue;
     QueueHandle_t writing_queue;
+    QueueHandle_t TLSWrapper_private_queue;
 };
 
 #endif //TLSWRAPPER_H

@@ -52,16 +52,18 @@ void setup_task(void *pvParameters) {
     params->registry->subscribe_to_handler(ReadingType::TEMPERATURE, params->connection->get_read_handle());
     params->registry->subscribe_to_handler(ReadingType::CO2_TARGET, params->connection->get_read_handle());
     params->registry->subscribe_to_handler(ReadingType::FAN_SPEED, params->connection->get_read_handle());
-    params->connection->set_write_handle(params->registry->get_write_queue_handle());
-    // subscribing screen to wanted reading values
-    params->registry->subscribe_to_handler(ReadingType::CO2, params->screen->get_reading_queue_handle());
-    params->registry->subscribe_to_handler(ReadingType::TEMPERATURE, params->screen->get_reading_queue_handle());
-    params->registry->subscribe_to_handler(ReadingType::REL_HUMIDITY, params->screen->get_reading_queue_handle());
-    params->registry->subscribe_to_handler(ReadingType::PRESSURE, params->screen->get_reading_queue_handle());
-    params->registry->subscribe_to_handler(ReadingType::FAN_SPEED, params->screen->get_reading_queue_handle());
-    params->registry->subscribe_to_handler(ReadingType::CO2_TARGET, params->screen->get_reading_queue_handle());
-    params->rotary->add_subscriber(params->screen->get_control_queue_handle());
+    // params->connection->set_write_handle(params->registry->get_write_queue_handle()); //TODO: tslwrapper is not blocking...
+    // // subscribing screen to wanted reading values
+    // params->registry->subscribe_to_handler(ReadingType::CO2, params->screen->get_reading_queue_handle());
+    // params->registry->subscribe_to_handler(ReadingType::TEMPERATURE, params->screen->get_reading_queue_handle());
+    // params->registry->subscribe_to_handler(ReadingType::REL_HUMIDITY, params->screen->get_reading_queue_handle());
+    // params->registry->subscribe_to_handler(ReadingType::PRESSURE, params->screen->get_reading_queue_handle());
+    // params->registry->subscribe_to_handler(ReadingType::FAN_SPEED, params->screen->get_reading_queue_handle());
+    // params->registry->subscribe_to_handler(ReadingType::CO2_TARGET, params->screen->get_reading_queue_handle());
+    // params->rotary->add_subscriber(params->screen->get_control_queue_handle());
 
+    vTaskDelay(10000); // To make sure wireless is fully initialized before exit.
+    //printf("delete setup");
     vTaskSuspend(NULL);
 }
 
@@ -79,7 +81,6 @@ int main() {
     std::shared_ptr<Screen> screen;
     std::shared_ptr<Rotary> rotary;
     // std::shared_ptr<Logger> logger;
-
                                                                                 // add logger to params
     setup_params params{uart_i, i2c_0, i2c_1, mbctrl, registry, connection, screen, rotary}; // <- here
 
