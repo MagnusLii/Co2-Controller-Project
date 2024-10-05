@@ -229,6 +229,7 @@ static void tlsdebug(void *ctx, int level, const char *file, int line, const cha
     fputs(message, stdout);  // Output the debug message
 }
 
+
 /* Main function to run the TLS client test */
 bool run_tls_client_test(const uint8_t *cert, size_t cert_len, const char *server, const char *request, int timeout) {
     // Create the TLS client configuration using the provided certificate
