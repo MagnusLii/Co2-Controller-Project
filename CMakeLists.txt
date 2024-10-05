@@ -17,6 +17,10 @@ set(INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/inc)
 
 set(PICO_BOARD pico_w)
 
+set(CXX_STANDARD 20)
+
+#add_compile_options(-Wall -Wextra -Wpedantic)
+
 # Define project
 project(${ProjectName})
 

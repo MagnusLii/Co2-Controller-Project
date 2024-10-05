@@ -8,6 +8,7 @@
 #define BUFFER_SIZE 1024
 #define TIMEOUT_MS 5000
 
+/*
 const char* FIELD_NAMES[] = {
     "&field1=",
     "&field2=",
@@ -18,7 +19,7 @@ const char* FIELD_NAMES[] = {
     "&field7=",
     "&field8="
 };
-
+*/
 
 ConnectionHandler::ConnectionHandler() = default;
 

@@ -126,13 +126,34 @@ void subscriber_setup_task(void *pvParameters) {
     //xTaskCreate(fully_initialize_connhandler_task, "init IPStack", 1024, (void *)&connHandler, TASK_PRIORITY_ABSOLUTE,
     //            nullptr);
 
-    vTaskSuspend(nullptr);
+    cyw43_arch_deinit();
+    printf("All done\n");
+    return;
 }
 
-void test_task(void *param) {
-    ConnectionHandler *connHandler = static_cast<ConnectionHandler *>(param);
-    while (connHandler->isConnected() != true && connHandler->isIPStackInitialized() != true) {
-        vTaskDelay(pdMS_TO_TICKS(1000));
+void tls_task(void *pvParameters) {
+
+    std::string cert = TLS_CERTIFICATE;
+    std::string ssid = WIFI_SSID;
+    std::string password = WIFI_PASSWORD;
+    uint32_t countryCode = DEFAULT_COUNTRY_CODE;
+
+    // std::string request = "POST /talkbacks/" TALKBACK_ID "/commands/execute.json HTTP/1.1\r\n"
+    //                   "Host: api.thingspeak.com\r\n"
+    //                   "Content-Length: 24\r\n"
+    //                   "Content-Type: application/x-www-form-urlencoded\r\n"
+    //                   "\r\n"
+    //                   "api_key=" TALK_BACK_API_KEY;
+
+    std::string request = "GET /update?api_key=" API_KEY "&field1=410&field2=45.7 HTTP/1.1\r\n"
+                      "Host: api.thingspeak.com\r\n"
+                      "Connection: close\r\n"
+                      "\r\n";
+
+    TLSWrapper tlsWrapper(cert, ssid, password, countryCode);
+    while (true) {
+        tlsWrapper.send_request(THINGSPEAK_HOSTNAME, request);
+        vTaskDelay(5000);
     }
 
     Message msg;
