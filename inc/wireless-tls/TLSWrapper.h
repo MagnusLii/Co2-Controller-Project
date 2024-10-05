@@ -56,7 +56,7 @@ public:
         UNDEFINED
     };    
 
-    TLSWrapper(const std::string& cert, const std::string& ssid, const std::string& password, uint32_t countryCode);
+    TLSWrapper(const std::string& ssid, const std::string& password, uint32_t countryCode);
     ~TLSWrapper();
     
     void send_request(const std::string& endpoint, const std::string& request);
@@ -70,8 +70,8 @@ private:
     //const std::string certificate;
     const std::string ssid;
     const std::string password;
-    const uint32_t countryCode;
     ConnectionStatus connectionStatus = ConnectionStatus::DISCONNECTED;
+    const uint32_t countryCode;
     TLS_CLIENT_T* tls_client;
 };
 

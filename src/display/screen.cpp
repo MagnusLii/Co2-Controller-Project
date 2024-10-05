@@ -40,7 +40,7 @@ Screen::Screen(std::shared_ptr<PicoI2C> i2c, uint16_t device_address, uint16_t w
     // display = std::make_unique<ssd1306os>(i2c, device_address, width, height);
     control_queue = xQueueCreate(20, 8); //change size
     vQueueAddToRegistry(control_queue, "SCREEN_QUEUE");
-    xTaskCreate(Screen::screen_task, "SCREEN", 512, this, TaskPriority::TASK_PRIORITY_ABSOLUTE, NULL);
+    xTaskCreate(Screen::screen_task, "SCREEN", 512, this, TaskPriority::ABSOLUTE, NULL);
 }
 
 QueueHandle_t Screen::get_queue_handle(void) {

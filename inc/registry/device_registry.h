@@ -13,8 +13,7 @@
 
 class DeviceRegistry { // Maybe rename to something something
   public:
-    DeviceRegistry();
-    void add_shared(shared_modbus mbctrl, shared_i2c i2c_i);
+    DeviceRegistry(shared_modbus mbctrl, shared_i2c i2c_i);
     void subscribe_to_handler(ReadingType type, QueueHandle_t receiver);
     QueueHandle_t get_write_queue_handle(WriteType type);
     void subscribe_to_all(QueueHandle_t receiver);

@@ -34,7 +34,8 @@ const char* FIELD_NAMES[] = {
     "&field7=",
     "&field8="
 };
-TLSWrapper::TLSWrapper(const std::string& cert, const std::string& ssid, const std::string& password, uint32_t countryCode)
+    TLS_CLIENT_T* tls_client;
+TLSWrapper::TLSWrapper(const std::string& ssid, const std::string& password, uint32_t countryCode)
     :
      ssid(ssid),
      password(password),

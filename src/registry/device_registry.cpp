@@ -4,15 +4,11 @@
 #include "register_handler.h"
 #include "task_defines.h"
 
-DeviceRegistry::DeviceRegistry() {
-    xTaskCreate(initialize_task, "initialize_registry", 512, this, TASK_PRIORITY_ABSOLUTE, nullptr);
+DeviceRegistry::DeviceRegistry(shared_modbus mbctrl, shared_i2c i2c_i)
+: mbctrl(mbctrl), i2c(i2c_i) {
+    xTaskCreate(initialize_task, "initialize_registry", 512, this, TaskPriority::ABSOLUTE, nullptr);
 }
 
-// Add shared pointers to the registry
-void DeviceRegistry::add_shared(shared_modbus mbctrl, shared_i2c i2c_i) {
-    this->mbctrl = mbctrl;
-    this->i2c = i2c_i;
-}
 
 // Setup task to create register handlers and add them to the registry
 void DeviceRegistry::initialize() {
@@ -118,12 +114,12 @@ void DeviceRegistry::add_register_handler(std::shared_ptr<WriteRegisterHandler> 
 //
 TestSubscriber::TestSubscriber() {
     receiver = xQueueCreate(10, sizeof(Reading));
-    xTaskCreate(receive_task, "Receive Task", 256, this, TASK_PRIORITY_MEDIUM, nullptr);
+    xTaskCreate(receive_task, "Receive Task", 256, this, TaskPriority::MEDIUM, nullptr);
 }
 
 TestSubscriber::TestSubscriber(const std::string &name) : name(name) {
     receiver = xQueueCreate(10, sizeof(Reading));
-    xTaskCreate(receive_task, name.c_str(), 256, this, TASK_PRIORITY_MEDIUM, nullptr);
+    xTaskCreate(receive_task, name.c_str(), 256, this, TaskPriority::MEDIUM, nullptr);
 }
 
 void TestSubscriber::receive() {
@@ -153,7 +149,7 @@ TestWriter::TestWriter(const std::string &name, QueueHandle_t handle) {
     this->name = name;
     this->send_handle = handle;
 
-    xTaskCreate(send_task, name.c_str(), 256, this, TASK_PRIORITY_MEDIUM, nullptr);
+    xTaskCreate(send_task, name.c_str(), 256, this, TaskPriority::MEDIUM, nullptr);
 }
 
 void TestWriter::add_send_handle(QueueHandle_t handle) { send_handle = handle; }

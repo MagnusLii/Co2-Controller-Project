@@ -1,21 +1,12 @@
 add_executable(${ProjectName}
         main.cpp
-        critical_section.cpp
         Fmutex.cpp
+        #critical_section.cpp
 
         display/framebuf.cpp
         display/mono_vlsb.cpp
-#        display/ssd1306.cpp
         display/ssd1306os.cpp
-
-        fan/fan_controller.cpp
         display/screen.cpp
-
-        ipstack/IPStack.cpp
-        ipstack/tls_common.c
-        ipstack/picow_tls_client.c
-
-        i2c/PicoI2C.cpp
 
         modbus/modbus_controller.cpp
         modbus/modbus_register.cpp
@@ -28,15 +19,14 @@ add_executable(${ProjectName}
         registry/register_handler.cpp
         registry/device_registry.cpp
 
-        wireless-tasks/connection_handler.cpp
-        wireless-tasks/api_tasks.cpp
-
-        ipstack/tls_common.c
-        ipstack/picow_tls_client.c
-
+        wireless-tls/tls_common.c
         wireless-tls/TLSWrapper.cpp
 
         rotary/rotary.cpp
+
+        i2c/PicoI2C.cpp
+
+        fan/fan_controller.cpp
 
 )
 
@@ -47,13 +37,11 @@ target_include_directories(${ProjectName} PRIVATE
         ${INCLUDE_DIR}/display
         ${INCLUDE_DIR}/fan
         ${INCLUDE_DIR}/i2c
-        ${INCLUDE_DIR}/ipstack
         ${INCLUDE_DIR}/modbus
         ${INCLUDE_DIR}/pico_hw
         ${INCLUDE_DIR}/pressure
         ${INCLUDE_DIR}/registry
         ${INCLUDE_DIR}/uart
-        ${INCLUDE_DIR}/wireless_tasks
         ${INCLUDE_DIR}/wireless-tls
         ${INCLUDE_DIR}/rotary
 )

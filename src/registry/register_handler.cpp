@@ -37,7 +37,7 @@ ModbusReadHandler::ModbusReadHandler(shared_modbus controller, const uint8_t dev
     this->reading.type = type;
     this->name = name;
 
-    xTaskCreate(mb_read_task, name.c_str(), 256, this, TASK_PRIORITY_MEDIUM, nullptr);
+    xTaskCreate(mb_read_task, name.c_str(), 256, this, TaskPriority::MEDIUM, nullptr);
 }
 
 void ModbusReadHandler::get_reading() { reading.value.u32 = reg.get32(); }
@@ -71,7 +71,7 @@ ModbusWriteHandler::ModbusWriteHandler(shared_modbus controller, const uint8_t d
     this->name = name;
     this->write_queue = xQueueCreate(5, sizeof(uint32_t));
 
-    xTaskCreate(mb_write_task, name.c_str(), 256, this, TASK_PRIORITY_MEDIUM, nullptr);
+    xTaskCreate(mb_write_task, name.c_str(), 256, this, TaskPriority::MEDIUM, nullptr);
 }
 
 void ModbusWriteHandler::write_to_reg(uint32_t value) {
@@ -101,7 +101,7 @@ I2CHandler::I2CHandler(shared_i2c i2c_i, const uint8_t device_address, const Rea
     this->reading.type = rtype;
     this->name = name;
 
-    xTaskCreate(i2c_read_task, name.c_str(), 256, this, TASK_PRIORITY_MEDIUM, nullptr);
+    xTaskCreate(i2c_read_task, name.c_str(), 256, this, TaskPriority::MEDIUM, nullptr);
 }
 
 void I2CHandler::get_reading() { reading.value.i16 = reg.read_register(); }
