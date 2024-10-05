@@ -9,6 +9,10 @@ DeviceRegistry::DeviceRegistry(shared_modbus mbctrl, shared_i2c i2c_i)
     xTaskCreate(initialize_task, "initialize_registry", 512, this, TaskPriority::ABSOLUTE, nullptr);
 }
 
+void DeviceRegistry::set_initial_values(float co2_target, uint16_t fan_speed, bool is_manual) {
+    fanctrl->set_initial_values(co2_target, fan_speed, is_manual);
+}
+
 
 // Setup task to create register handlers and add them to the registry
 void DeviceRegistry::initialize() {
@@ -23,9 +27,9 @@ void DeviceRegistry::initialize() {
     auto w_fan_speed = std::make_shared<ModbusWriteHandler>(mbctrl, MB_DEVADDR_FAN, MB_REGADDR_FAN_SPEED, 1,
                                                             WriteType::FAN_SPEED, "Fan Speed Control");
     auto pressure = std::make_shared<I2CHandler>(i2c, I2C_DEVADDR_PRESSURE, ReadingType::PRESSURE, "Pressure");
+    
+    fanctrl = std::make_shared<FanController>(w_fan_speed->get_write_queue_handle());
 
-    float target_from_eeprom = 400.0;
-    fanctrl = std::make_shared<FanController>(w_fan_speed->get_write_queue_handle(), target_from_eeprom);
 
     add_register_handler(std::move(co2), ReadingType::CO2);
     add_register_handler(std::move(temp), ReadingType::TEMPERATURE);
@@ -33,12 +37,15 @@ void DeviceRegistry::initialize() {
     add_register_handler(std::move(fan_counter), ReadingType::FAN_COUNTER);
     add_register_handler(std::move(pressure), ReadingType::PRESSURE);
     add_register_handler(std::move(w_fan_speed), WriteType::FAN_SPEED);
+    
 
     subscribe_to_handler(ReadingType::CO2, fanctrl->get_reading_queue_handle());
     subscribe_to_handler(ReadingType::FAN_COUNTER, fanctrl->get_reading_queue_handle());
 
     auto r_fan_speed = std::make_shared<FanSpeedReadHandler>(fanctrl);
     auto co2_target = std::make_shared<CO2TargetReadHandler>(fanctrl);
+    add_register_handler(std::move(r_fan_speed), ReadingType::FAN_SPEED);
+    add_register_handler(std::move(co2_target), ReadingType::CO2_TARGET);
 
     vTaskSuspend(nullptr);
 }
@@ -57,20 +64,8 @@ void DeviceRegistry::subscribe_to_handler(const ReadingType type, QueueHandle_t 
 // Get write queue handle for a specific write handler
 // Subscriber must specify WriteType and will get a queue handle in return if
 // one exists for the chosen type
-QueueHandle_t DeviceRegistry::get_write_queue_handle(const WriteType type) {
-    if (write_handlers.find(type) != write_handlers.end()) {
-        std::cout << "Subscriber given handle to " << write_handlers[type]->get_name() << std::endl;
-        switch (type) {
-            case WriteType::FAN_SPEED:
-            case WriteType::CO2_TARGET:
-                return fanctrl->get_write_queue_handle();
-                break;
-            default:
-                return write_handlers[type]->get_write_queue_handle();
-        }
-    }
-    std::cout << "Handler not found" << std::endl;
-    return nullptr;
+QueueHandle_t DeviceRegistry::get_write_queue_handle() {
+    return fanctrl->get_write_queue_handle();
 }
 
 // Subscribe to all read handlers in the registry

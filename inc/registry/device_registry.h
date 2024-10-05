@@ -15,11 +15,11 @@ class DeviceRegistry { // Maybe rename to something something
   public:
     DeviceRegistry(shared_modbus mbctrl, shared_i2c i2c_i);
     void subscribe_to_handler(ReadingType type, QueueHandle_t receiver);
-    QueueHandle_t get_write_queue_handle(WriteType type);
+    QueueHandle_t get_write_queue_handle();
     void subscribe_to_all(QueueHandle_t receiver);
     void add_register_handler(std::shared_ptr<ReadRegisterHandler> handler, ReadingType type);
     void add_register_handler(std::shared_ptr<WriteRegisterHandler> handler, WriteType type);
-
+    void set_initial_values(float co2_target, uint16_t fan_speed, bool is_manual);
   private:
     void initialize();
     static void initialize_task(void *pvParameters) {

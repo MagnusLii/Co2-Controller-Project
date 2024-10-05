@@ -3,12 +3,17 @@
 #include <cmath>
 #include <iostream>
 
-FanController::FanController(QueueHandle_t fan_speed_q, float prev_co2_target) : speed_queue(fan_speed_q) {
+FanController::FanController(QueueHandle_t fan_speed_q) : speed_queue(fan_speed_q) {
     this->reading_queue = xQueueCreate(5, sizeof(Reading));
     this->write_queue = xQueueCreate(5, sizeof(Command));
-    this->co2_target = prev_co2_target;
 
     xTaskCreate(fan_control_task, "FanController", 512, this, TaskPriority::MEDIUM, nullptr);
+}
+
+void FanController::set_initial_values(float co2_target, uint16_t fan_speed, bool is_manual) {
+    this->co2_target = co2_target;
+    this->speed = fan_speed;
+    this->manual_mode = is_manual;
 }
 
 QueueHandle_t FanController::get_reading_queue_handle() const { return reading_queue; }

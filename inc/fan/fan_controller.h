@@ -15,11 +15,12 @@
 
 class FanController {
   public:
-    FanController(QueueHandle_t fan_speed_q, float prev_co2_target);
+    FanController(QueueHandle_t fan_speed_q);
     [[nodiscard]] QueueHandle_t get_reading_queue_handle() const;
     [[nodiscard]] QueueHandle_t get_write_queue_handle() const;
     uint16_t get_speed() const;
     float get_co2_target() const;
+    void set_initial_values(float co2_target, uint16_t fan_speed, bool is_manual);
 
   private:
     void fan_control();

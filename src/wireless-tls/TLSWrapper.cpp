@@ -54,6 +54,7 @@ TLSWrapper::TLSWrapper(const std::string& ssid, const std::string& password, uin
         } else {
             TLSWRAPPERprintf("TLSWrapper::TLSWrapper: connected\n");
         }
+        reading_queue = xQueueCreate(20, sizeof(Reading));
 }
 
 TLSWrapper::~TLSWrapper() {
@@ -76,7 +77,7 @@ void TLSWrapper::send_request(const std::string& endpoint, const std::string& re
     // run_tls_client_test(cert, sizeof(cert), endpoint.c_str(), request.c_str(), CONNECTION_TIMEOUT_MS); // Verified to work
 }
 
-void TLSWrapper::emptyresponseBuffer(QueueHandle_t queue_where_to_store_msg) {  
+void TLSWrapper::empty_response_buffer(QueueHandle_t queue_where_to_store_msg) {  
     Message msg;
 
     // Check if the response is not NULL
@@ -94,7 +95,7 @@ void TLSWrapper::emptyresponseBuffer(QueueHandle_t queue_where_to_store_msg) {
     }
 }
 
-void TLSWrapper::createFieldUpdateRequest(Message &messageContainer, const float values[]){
+void TLSWrapper::create_field_update_request(Message &messageContainer, const float values[]){
     messageContainer.data = ""; // Clear message container
     
     messageContainer.data += "GET /update?api_key=";
@@ -118,7 +119,7 @@ void TLSWrapper::createFieldUpdateRequest(Message &messageContainer, const float
     return;
 }
 
-void TLSWrapper::createCommandRequest(Message &messageContainer, const char* command){
+void TLSWrapper::create_command_request(Message &messageContainer, const char* command){
     messageContainer.data = ""; // Clear message container
 
     messageContainer.data += "POST /talkbacks/" TALKBACK_ID "/commands/execute.json HTTP/1.1\r\n";
@@ -133,145 +134,10 @@ void TLSWrapper::createCommandRequest(Message &messageContainer, const char* com
     return;
 }
 
+void TLSWrapper::set_write_handle(QueueHandle_t queue) {
+    writing_queue = queue;
+}
 
-
-
-
-
-// void TLSWrapper::send_request(const std::string& endpoint, const std::string& request) {
-
-//     // Initialize TLS config
-//     altcp_tls_config* tls_config = altcp_tls_create_config_client((uint8_t*)this->certificate.c_str(), this->certificateLength);
-//     assert(tls_config);
-
-//     mbedtls_ssl_conf_authmode((mbedtls_ssl_config *)tls_config, MBEDTLS_SSL_VERIFY_REQUIRED);
-
-//     // Initialize the client state
-//     tls_client = tls_client_init();
-//     if (!tls_client) {
-//         TLSWRAPPERprintf("TLSWrapper::connect: Failed to initialize client state\n");
-//         this->connectionStatus = ConnectionStatus::ERROR;
-//         free(tls_client);
-//         altcp_tls_free_config(tls_config);
-//         return;
-//     }
-
-//     tls_client->http_request = request.c_str();
-//     tls_client->timeout = CONNECTION_TIMEOUT_MS;
-
-//     // Open the TLS connection
-//     if (!tls_client_open(endpoint.c_str(), tls_client)) {
-//         TLSWRAPPERprintf("TLSWrapper::connect: Failed to open connection\n");
-//         this->connectionStatus = ConnectionStatus::ERROR;
-//         free(tls_client);
-//         altcp_tls_free_config(tls_config);
-//         return;
-//     }
-
-//     this->connectionStatus = ConnectionStatus::CONNECTED;
-
-//     // Wait for completion
-//     while (!tls_client->complete) {
-//         vTaskDelay(100);
-//     }
-
-//     TLSWRAPPERprintf("Response: %s\n", tls_client->response);
-
-//     free(tls_client);
-//     altcp_tls_free_config(tls_config);
-// }
-
-// bool TLSWrapper::test_mbed(const char *server, const char *request, const uint8_t *cert, size_t cert_len, int timeout) {
-//     int ret;
-//     mbedtls_net_context server_fd;
-//     mbedtls_ssl_context ssl;
-//     mbedtls_ssl_config conf;
-//     mbedtls_entropy_context entropy;
-//     mbedtls_ctr_drbg_context ctr_drbg;
-//     mbedtls_x509_crt ca_cert;
-
-//     const char *pers = "ssl_client";
-
-//     mbedtls_net_init(&server_fd);
-//     mbedtls_ssl_init(&ssl);
-//     mbedtls_ssl_config_init(&conf);
-//     mbedtls_entropy_init(&entropy);
-//     mbedtls_ctr_drbg_init(&ctr_drbg);
-//     mbedtls_x509_crt_init(&ca_cert);
-
-//     if ((ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char *)pers, strlen(pers))) != 0) {
-//         TLSWRAPPERprintf("Failed to seed RNG: -0x%x\n", -ret);
-//         return false;
-//     }
-
-//     if ((ret = mbedtls_x509_crt_parse(&ca_cert, cert, cert_len)) < 0) {
-//         TLSWRAPPERprintf("Failed to parse CA certificate: -0x%x\n", -ret);
-//         return false;
-//     }
-
-//     if ((ret = mbedtls_net_connect(&server_fd, server, "443", MBEDTLS_NET_PROTO_TCP)) != 0) {
-//         printf("Failed to connect to server: -0x%x\n", -ret);
-//         TLSWRAPPERprintf false;
-//     }
-
-//     if ((ret = mbedtls_ssl_config_defaults(&conf, MBEDTLS_SSL_IS_CLIENT, MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT)) != 0) {
-//         TLSWRAPPERprintf("Failed to setup SSL config: -0x%x\n", -ret);
-//         return false;
-//     }
-
-//     mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
-//     mbedtls_ssl_conf_ca_chain(&conf, &ca_cert, NULL);
-//     mbedtls_ssl_conf_rng(&conf, mbedtls_ctr_drbg_random, &ctr_drbg);
-
-//     if ((ret = mbedtls_ssl_setup(&ssl, &conf)) != 0) {
-//         TLSWRAPPERprintf("Failed to setup SSL context: -0x%x\n", -ret);
-//         return false;
-//     }
-
-//     if ((ret = mbedtls_ssl_set_hostname(&ssl, server)) != 0) {
-//         TLSWRAPPERprintf("Failed to set hostname: -0x%x\n", -ret);
-//         return false;
-//     }
-
-//     mbedtls_ssl_set_bio(&ssl, &server_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
-
-//     while ((ret = mbedtls_ssl_handshake(&ssl)) != 0) {
-//         if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
-//             TLSWRAPPERprintf("Failed SSL handshake: -0x%x\n", -ret);
-//             return false;
-//         }
-//     }
-
-//     if ((ret = mbedtls_ssl_write(&ssl, (const unsigned char *)request, strlen(request))) <= 0) {
-//         TLSWRAPPERprintf("Failed to send request: -0x%x\n", -ret);
-//         return false;
-//     }
-
-//     unsigned char buffer[4096];
-//     memset(buffer, 0, sizeof(buffer));
-
-//     do {
-//         ret = mbedtls_ssl_read(&ssl, buffer, sizeof(buffer) - 1);
-//         if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE) {
-//             continue;
-//         } else if (ret < 0) {
-//             TLSWRAPPERprintf("Failed to read response: -0x%x\n", -ret);
-//             return false;
-//         } else if (ret == 0) {
-//             TLSWRAPPERprintf("Connection closed\n");
-//             break;
-//         }
-
-//         TLSWRAPPERprintf("Response: %s\n", buffer);
-//     } while (ret > 0);
-
-//     mbedtls_ssl_close_notify(&ssl);
-//     mbedtls_net_free(&server_fd);
-//     mbedtls_ssl_free(&ssl);
-//     mbedtls_ssl_config_free(&conf);
-//     mbedtls_ctr_drbg_free(&ctr_drbg);
-//     mbedtls_entropy_free(&entropy);
-//     mbedtls_x509_crt_free(&ca_cert);
-
-//     return true;
-// }
+QueueHandle_t TLSWrapper::get_read_handle(void) {
+    return reading_queue;
+}

@@ -61,10 +61,13 @@ public:
     
     void send_request(const std::string& endpoint, const std::string& request);
     
-    void emptyresponseBuffer(QueueHandle_t queue_where_to_store_msg);
+    void empty_response_buffer(QueueHandle_t queue_where_to_store_msg);
 
-    void createFieldUpdateRequest(Message &messageContainer, const float values[]);
-    void createCommandRequest(Message &messageContainer, const char* command);
+    void create_field_update_request(Message &messageContainer, const float values[]);
+    void create_command_request(Message &messageContainer, const char* command);
+
+    void set_write_handle(QueueHandle_t queue);
+    QueueHandle_t get_read_handle(void);
 
 private:
     //const std::string certificate;
@@ -73,6 +76,8 @@ private:
     ConnectionStatus connectionStatus = ConnectionStatus::DISCONNECTED;
     const uint32_t countryCode;
     TLS_CLIENT_T* tls_client;
+    QueueHandle_t reading_queue;
+    QueueHandle_t writing_queue;
 };
 
 #endif //TLSWRAPPER_H

@@ -22,10 +22,7 @@ enum class ReadingType {
     REL_HUMIDITY,
     FAN_COUNTER,
     FAN_SPEED,
-    PRESSURE,
-    ROT_SW,
-    CW,
-    CCW
+    PRESSURE
 };
 
 enum class WriteType {
