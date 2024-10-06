@@ -25,6 +25,7 @@
 #include "debugPrints.h"
 #include <algorithm>
 #include "task_defines.h"
+#include <iostream>
 
 const char* FIELD_NAMES[] = {
     "&field1=",
@@ -94,15 +95,14 @@ void TLSWrapper::send_request_and_get_response(const std::string& endpoint, cons
     char response[MAX_BUFFER_SIZE];
     size_t response_len = 0;
 
-    // std::lock_guard<Fmutex> exclusive(mutex);
     mutex.lock();
     TLSWRAPPERprintf("TLSWrapper::send_request_and_get_response: %s\n", request.c_str());
     send_tls_request_and_get_response(endpoint.c_str(), request.c_str(), CONNECTION_TIMEOUT_MS, response, &response_len);
     mutex.unlock();
     TLSWRAPPERprintf("TLSWrapper::response from server: %s\n %d", response, response_len);
     
-    receivedMsg.data = response;
-    while(!xQueueSend(response_queue, &receivedMsg, 0)){}
+    receivedMsg.data = std::string(response);
+    xQueueSend(response_queue, &receivedMsg, 0);
 }
 
 void TLSWrapper::create_field_update_request(Message &messageContainer, const std::array<Reading, 8> &values){
@@ -147,6 +147,10 @@ void TLSWrapper::create_command_request(Message &messageContainer){
 
 void TLSWrapper::set_write_handle(QueueHandle_t queue) {
     writing_queue = queue;
+}
+
+void TLSWrapper::set_screen_write_handle(QueueHandle_t queue) {
+    screen_writing_queue = queue;
 }
 
 QueueHandle_t TLSWrapper::get_read_handle(void) {
@@ -225,6 +229,7 @@ void TLSWrapper::get_server_commands_task_(void *param){
     }
 }
 
+#include <iostream>
 void TLSWrapper::parse_server_commands_task_(void *param){
     Message msg;
     Command modeCommand;
@@ -235,9 +240,10 @@ void TLSWrapper::parse_server_commands_task_(void *param){
     int retries = 0;
 
     for(;;){
-        vTaskDelay(5000);
-        if (xQueueReceive(response_queue, &msg, 0)){
+        // vTaskDelay(5000);
+        if (xQueueReceive(response_queue, &msg, portMAX_DELAY)){
             // Parse the response
+            std::cout << msg.data << std::endl;
             msg.data = parse_command_from_http(msg.data);
             pos = msg.data.find(" ");
             num_pos = msg.data.find_first_of("0123456789", pos);
@@ -252,6 +258,8 @@ void TLSWrapper::parse_server_commands_task_(void *param){
 
                     xQueueSend(writing_queue, &modeCommand, 0);
                     xQueueSend(writing_queue, &valueCommand, 0);
+                    xQueueSend(screen_writing_queue, &modeCommand, 0);
+                    xQueueSend(screen_writing_queue, &valueCommand, 0);
 
                 }
                 else if (msg.data.starts_with("co2")){
@@ -263,6 +271,8 @@ void TLSWrapper::parse_server_commands_task_(void *param){
 
                     xQueueSend(writing_queue, &modeCommand, 0);
                     xQueueSend(writing_queue, &valueCommand, 0);
+                    xQueueSend(screen_writing_queue, &modeCommand, 0);
+                    xQueueSend(screen_writing_queue, &valueCommand, 0);
                 }
 
             }

@@ -279,7 +279,7 @@ void configure_tls(uint8_t *cert, size_t cert_len) {
 }
 
 bool send_tls_request(const char *server, const char *request, int timeout) {
-    tls_config = altcp_tls_create_config_client(TLS_CERTIFICATE, sizeof(TLS_CERTIFICATE));
+    tls_config = altcp_tls_create_config_client((u8_t*)TLS_CERTIFICATE, sizeof(TLS_CERTIFICATE));
     assert(tls_config);
 
     mbedtls_ssl_conf_authmode((mbedtls_ssl_config *)tls_config, MBEDTLS_SSL_VERIFY_REQUIRED);
@@ -305,7 +305,7 @@ bool send_tls_request(const char *server, const char *request, int timeout) {
 }
 
 bool send_tls_request_and_get_response(const char *server, const char *request, int timeout, char *response, size_t *response_len) {
-    tls_config = altcp_tls_create_config_client(TLS_CERTIFICATE, sizeof(TLS_CERTIFICATE));
+    tls_config = altcp_tls_create_config_client((u8_t*)TLS_CERTIFICATE, sizeof(TLS_CERTIFICATE));
     assert(tls_config);
 
     mbedtls_ssl_conf_authmode((mbedtls_ssl_config *)tls_config, MBEDTLS_SSL_VERIFY_REQUIRED);

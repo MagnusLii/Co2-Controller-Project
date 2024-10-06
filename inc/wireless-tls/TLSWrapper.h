@@ -49,6 +49,7 @@ public:
     TLSWrapper(const std::string& ssid, const std::string& password, uint32_t countryCode);
     ~TLSWrapper();
     void set_write_handle(QueueHandle_t queue);
+    void set_screen_write_handle(QueueHandle_t queue);
     QueueHandle_t get_read_handle(void);
 
 private:
@@ -95,6 +96,7 @@ private:
     const uint32_t countryCode;
     QueueHandle_t reading_queue;
     QueueHandle_t writing_queue;
+    QueueHandle_t screen_writing_queue;
     QueueHandle_t sensor_data_queue;
     QueueHandle_t response_queue;
     TaskHandle_t reconnect_task_handle;

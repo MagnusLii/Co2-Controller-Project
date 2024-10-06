@@ -62,12 +62,8 @@ void setup_task(void *pvParameters) {
 
     params->rotary->add_subscriber(params->registry->get_write_queue_handle());
     params->rotary->add_subscriber(params->screen->get_control_queue_handle());
-    // params->rotary->set_screen_queue(params->screen->get_control_queue_handle());
-    // params->rotary->set_fanctrl_queue(params->registry->get_write_queue_handle());
+    params->connection->set_screen_write_handle(params->screen->get_control_queue_handle());
 
-    vTaskDelay(10000); // To make sure wireless is fully initialized before exit.
-    //printf("delete setup");
-    // params->rotary->add_subscriber(params->registry->get_write_queue_handle());
     vTaskSuspend(NULL);
 }
 
