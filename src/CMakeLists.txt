@@ -28,6 +28,8 @@ add_executable(${ProjectName}
 
         fan/fan_controller.cpp
 
+        eeprom/logger.cpp
+
 )
 
 target_include_directories(${ProjectName} PRIVATE
@@ -42,8 +44,10 @@ target_include_directories(${ProjectName} PRIVATE
         ${INCLUDE_DIR}/pressure
         ${INCLUDE_DIR}/registry
         ${INCLUDE_DIR}/uart
+        ${INCLUDE_DIR}/wireless_tasks
         ${INCLUDE_DIR}/wireless-tls
         ${INCLUDE_DIR}/rotary
+        ${INCLUDE_DIR}/eeprom
 )
 
 target_compile_definitions(${ProjectName} PRIVATE
