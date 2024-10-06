@@ -25,16 +25,18 @@
 #include "lwip/altcp_tcp.h"
 #include "lwip/altcp_tls.h"
 #include "lwip/dns.h"
+#include "Fmutex.h"
+#include <mutex>
 
 #define SEND_QUEUE_SIZE 64
 #define RECEIVE_QUEUE_SIZE 64
 #define CONNECTION_TIMEOUT_MS 15000
-#define MAX_BUFFER_SIZE 2048 // obsolete
+#define MAX_BUFFER_SIZE 1024
 #define POLL_TIME_S 10
+#define READING_SEND_INTERVAL 10000
 
 struct Message {
     std::string data;
-    int length;
 };
 
 class TLSWrapper {
@@ -44,40 +46,59 @@ public:
         DISCONNECTED,
         ERROR
     };
-
-    enum class ApiFields {
-        CO2_LEVEL,
-        RELATIVE_HUMIDITY,
-        TEMPERATURE,
-        VENT_FAN_SPEED,
-        CO2_SET_POINT,
-        TIMESTAMP,
-        DEVICE_STATUS,
-        UNDEFINED
-    };    
-
     TLSWrapper(const std::string& ssid, const std::string& password, uint32_t countryCode);
     ~TLSWrapper();
-    
-    void send_request(const std::string& endpoint, const std::string& request);
-    
-    void empty_response_buffer(QueueHandle_t queue_where_to_store_msg);
-
-    void create_field_update_request(Message &messageContainer, const float values[]);
-    void create_command_request(Message &messageContainer, const char* command);
-
     void set_write_handle(QueueHandle_t queue);
     QueueHandle_t get_read_handle(void);
 
 private:
-    //const std::string certificate;
+    void send_request(const std::string& endpoint, const std::string& request);
+    void send_request_and_get_response(const std::string& endpoint, const std::string& request);
+
+    void create_field_update_request(Message &messageContainer, const std::array<Reading, 8> &values);
+    void create_command_request(Message &messageContainer);
+
+    void process_and_send_sensor_data_task_();
+    static void process_and_send_sensor_data_task(void *param){
+        auto *funcPointer = static_cast<TLSWrapper*>(param);
+        funcPointer->process_and_send_sensor_data_task_();
+    }
+
+    void send_field_update_request_task_(void *param);
+    static void send_field_update_request_task(void *param){
+        auto *funcPointer = static_cast<TLSWrapper*>(param);
+        funcPointer->send_field_update_request_task_(param);
+    }
+
+    void get_server_commands_task_(void *param);
+    static void get_server_commands_task(void *param){
+        auto *funcPointer = static_cast<TLSWrapper*>(param);
+        funcPointer->get_server_commands_task_(param);
+    }
+
+    void parse_server_commands_task_(void *param);
+    static void parse_server_commands_task(void *param){
+        auto *funcPointer = static_cast<TLSWrapper*>(param);
+        funcPointer->parse_server_commands_task_(param);
+    }
+
+    // void reconnect_task_(void *param);
+    // static void reconnect_task(void *param){
+    //     auto *funcPointer = static_cast<TLSWrapper*>(param);
+    //     funcPointer->reconnect_task_(param);
+    // }
+
+    std::string parse_command_from_http(const std::string& http_response);
+
     const std::string ssid;
     const std::string password;
-    ConnectionStatus connectionStatus = ConnectionStatus::DISCONNECTED;
     const uint32_t countryCode;
-    TLS_CLIENT_T* tls_client;
     QueueHandle_t reading_queue;
     QueueHandle_t writing_queue;
+    QueueHandle_t sensor_data_queue;
+    QueueHandle_t response_queue;
+    TaskHandle_t reconnect_task_handle;
+    Fmutex mutex;
 };
 
 #endif //TLSWRAPPER_H

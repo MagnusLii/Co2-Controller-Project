@@ -4,7 +4,7 @@
 #include "task.h"
 #include "queue.h"
 #include "register_handler.h"
-//#include "tls_common.h"
+#include "tls_common.h"
 #include "debugPrints.h"
 #include <cstdint>
 #include <memory>
@@ -23,6 +23,8 @@
 #include "lwip/dns.h"
 #include "connection_defines.h"
 #include "debugPrints.h"
+#include <algorithm>
+#include "task_defines.h"
 
 const char* FIELD_NAMES[] = {
     "&field1=",
@@ -34,13 +36,16 @@ const char* FIELD_NAMES[] = {
     "&field7=",
     "&field8="
 };
-    TLS_CLIENT_T* tls_client;
+
 TLSWrapper::TLSWrapper(const std::string& ssid, const std::string& password, uint32_t countryCode)
     :
      ssid(ssid),
      password(password),
-     connectionStatus(ConnectionStatus::DISCONNECTED),
-     countryCode(countryCode){
+     countryCode(countryCode),
+     mutex(){
+        reading_queue = xQueueCreate(20, sizeof(Reading));
+        sensor_data_queue = xQueueCreate(5, sizeof(Message));
+        response_queue = xQueueCreate(5, sizeof(Message));
 
         TLSWRAPPERprintf("TLSWrapper::TLSWrapper: Initializing TLSWrapper\n");
         if (cyw43_arch_init_with_country(countryCode) != 0) {
@@ -48,78 +53,86 @@ TLSWrapper::TLSWrapper(const std::string& ssid, const std::string& password, uin
         }
         cyw43_arch_enable_sta_mode();
 
-        TLSWRAPPERprintf("TLSWrapper::TLSWrapper: Connecting to wireless\n");
-        if (cyw43_arch_wifi_connect_timeout_ms(ssid.c_str(), password.c_str(), CYW43_AUTH_WPA2_AES_PSK, CONNECTION_TIMEOUT_MS) != 0) {
-            TLSWRAPPERprintf("TLSWrapper::TLSWrapper: failed to connect\n");
-        } else {
-            TLSWRAPPERprintf("TLSWrapper::TLSWrapper: connected\n");
-        }
-        reading_queue = xQueueCreate(20, sizeof(Reading));
+
+        bool connected = false;
+        int retries = 0;
+        do {
+
+            TLSWRAPPERprintf("TLSWrapper::TLSWrapper: Connecting to wireless\n");
+            connected = cyw43_arch_wifi_connect_timeout_ms(ssid.c_str(), password.c_str(), CYW43_AUTH_WPA2_AES_PSK, CONNECTION_TIMEOUT_MS);
+            if ( connected != 0) {
+                TLSWRAPPERprintf("TLSWrapper::TLSWrapper: failed to connect\n");
+            } else {
+                TLSWRAPPERprintf("TLSWrapper::TLSWrapper: connected\n");
+            }
+            retries++;
+        } while (connected != 0 && retries < 5);
+
+
+
+        // TODO: VERIFY STACK SIZES
+        xTaskCreate(process_and_send_sensor_data_task, "Process sensor data task", 512, this, TaskPriority::LOW, nullptr);
+        xTaskCreate(send_field_update_request_task, "Update fields task", 1024, this, TaskPriority::LOW, nullptr); // 512 did not work.
+        xTaskCreate(get_server_commands_task, "Request commands task", 1024, this, TaskPriority::LOW, nullptr); // 512 did not work.
+        xTaskCreate(parse_server_commands_task, "Command parser task", 1024, this, TaskPriority::HIGH, nullptr);
+        // xTaskCreate(reconnect_task, "Reconnect task", 512, this, TaskPriority::ABSOLUTE, &reconnect_task_handle);
 }
 
 TLSWrapper::~TLSWrapper() {
-    if (tls_client) {
-        // Free the response if it was allocated
-        if (tls_client->response) {
-            free(tls_client->response);
-            tls_client->response = nullptr;
-        }
-
-        // Free the tls_client structure itself
-        free(tls_client);
-        tls_client = nullptr;
-    }
+    // nothing.
 }
 
 void TLSWrapper::send_request(const std::string& endpoint, const std::string& request){
     TLSWRAPPERprintf("TLSWrapper::send_request: %s\n", request.c_str());
-    send_tls_request(endpoint.c_str(), request.c_str(), CONNECTION_TIMEOUT_MS, tls_client); // custom made.
-    // run_tls_client_test(cert, sizeof(cert), endpoint.c_str(), request.c_str(), CONNECTION_TIMEOUT_MS); // Verified to work
+    mutex.lock();
+    send_tls_request(endpoint.c_str(), request.c_str(), CONNECTION_TIMEOUT_MS);
+    mutex.unlock();
 }
 
-void TLSWrapper::empty_response_buffer(QueueHandle_t queue_where_to_store_msg) {  
-    Message msg;
+void TLSWrapper::send_request_and_get_response(const std::string& endpoint, const std::string& request){
+    Message receivedMsg;
+    char response[MAX_BUFFER_SIZE];
+    size_t response_len = 0;
 
-    // Check if the response is not NULL
-    if (tls_client->response != NULL) {
-        msg.data = strdup(tls_client->response);
-        msg.length = strlen(tls_client->response);
-        if (msg.data.length() != 0) {
-            TLSWRAPPERprintf("Failed to allocate memory for msg.data\n");
-            return;
-        }
-        tls_client->response_stored = false;
-        xQueueSend(queue_where_to_store_msg, &msg, 0);
-    } else {
-        msg.data = strdup(""); // TODO: Remove?
-    }
+    // std::lock_guard<Fmutex> exclusive(mutex);
+    mutex.lock();
+    TLSWRAPPERprintf("TLSWrapper::send_request_and_get_response: %s\n", request.c_str());
+    send_tls_request_and_get_response(endpoint.c_str(), request.c_str(), CONNECTION_TIMEOUT_MS, response, &response_len);
+    mutex.unlock();
+    TLSWRAPPERprintf("TLSWrapper::response from server: %s\n %d", response, response_len);
+    
+    receivedMsg.data = response;
+    while(!xQueueSend(response_queue, &receivedMsg, 0)){}
 }
 
-void TLSWrapper::create_field_update_request(Message &messageContainer, const float values[]){
+void TLSWrapper::create_field_update_request(Message &messageContainer, const std::array<Reading, 8> &values){
     messageContainer.data = ""; // Clear message container
     
     messageContainer.data += "GET /update?api_key=";
     messageContainer.data += API_KEY;
 
-    for (int i = 0; i < (int)TLSWrapper::ApiFields::UNDEFINED; i++) {
+    for (int i = 0; i < 5; i++) {
         messageContainer.data += FIELD_NAMES[i];
         char buffer[69];
-        snprintf(buffer, sizeof(buffer), "%.2f", values[i]);
+        if (values[i].type == ReadingType::FAN_SPEED) {
+            snprintf(buffer, sizeof(buffer), "%d", values[i].value.u16);
+        } else {
+            snprintf(buffer, sizeof(buffer), "%.2f", values[i].value.f32);
+        }
         messageContainer.data += buffer;
     }
 
     messageContainer.data += " HTTP/1.1\r\n";
     messageContainer.data += "Host: ";
     messageContainer.data += THINGSPEAK_HOSTNAME;
+    messageContainer.data += "\r\n";
     messageContainer.data += "Connection: close\r\n";
     messageContainer.data += "\r\n";
-
-    messageContainer.length = messageContainer.data.length();
 
     return;
 }
 
-void TLSWrapper::create_command_request(Message &messageContainer, const char* command){
+void TLSWrapper::create_command_request(Message &messageContainer){
     messageContainer.data = ""; // Clear message container
 
     messageContainer.data += "POST /talkbacks/" TALKBACK_ID "/commands/execute.json HTTP/1.1\r\n";
@@ -128,8 +141,6 @@ void TLSWrapper::create_command_request(Message &messageContainer, const char* c
     messageContainer.data += "Content-Type: application/x-www-form-urlencoded\r\n";
     messageContainer.data += "\r\n";
     messageContainer.data += "api_key=" TALK_BACK_API_KEY;
-
-    messageContainer.length = messageContainer.data.length();
 
     return;
 }
@@ -141,3 +152,169 @@ void TLSWrapper::set_write_handle(QueueHandle_t queue) {
 QueueHandle_t TLSWrapper::get_read_handle(void) {
     return reading_queue;
 }
+
+void TLSWrapper::process_and_send_sensor_data_task_() {
+    Message msg;
+    Reading reading;
+
+    std::array<Reading, 8> values;
+
+    // Init zero values
+    for (auto value : values){
+        value = {ReadingType::UNSET, {0}};
+    }
+
+    for (;;) {
+        vTaskDelay(pdMS_TO_TICKS(READING_SEND_INTERVAL));
+
+        while (xQueueReceive(reading_queue, &reading, 0) == pdPASS) {
+            switch (reading.type) {
+                case ReadingType::CO2:
+                    values[(int)ReadingType::CO2 - 1] = reading;
+                    break;
+                case ReadingType::CO2_TARGET:
+                    values[(int)ReadingType::CO2_TARGET - 1] = reading;
+                    break;
+                case ReadingType::FAN_SPEED:
+                    values[(int)ReadingType::FAN_SPEED - 1] = reading;
+                    break;
+                case ReadingType::REL_HUMIDITY:
+                    values[(int)ReadingType::REL_HUMIDITY - 1] = reading;
+                    break;
+                case ReadingType::TEMPERATURE:
+                    values[(int)ReadingType::TEMPERATURE - 1] = reading;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        create_field_update_request(msg, values);
+
+        if (msg.data.length() > 0) {
+            // TLSWRAPPERprintf("Writing to queue");
+            xQueueSend(sensor_data_queue, &msg, 0);
+        }
+    }
+}
+
+void TLSWrapper::send_field_update_request_task_(void *asd){
+    Message msg;
+    std::string hostname = THINGSPEAK_HOSTNAME;
+    for(;;){
+        vTaskDelay(1000);
+        if (xQueueReceive(sensor_data_queue, &msg, 0)){
+            // std::lock_guard<Fmutex> exclusive(mutex);
+            // mutex.lock();
+            send_request(hostname, msg.data);
+            // mutex.unlock();
+        }
+    }
+}
+
+void TLSWrapper::get_server_commands_task_(void *param){
+    Message msg;
+    std::string hostname = THINGSPEAK_HOSTNAME;
+    create_command_request(msg);
+
+
+
+    for(;;){
+        vTaskDelay(5000);
+        send_request_and_get_response(hostname, msg.data);
+    }
+}
+
+void TLSWrapper::parse_server_commands_task_(void *param){
+    Message msg;
+    Command modeCommand;
+    Command valueCommand;
+    std::size_t pos;
+    std::size_t num_pos;
+    bool sent = false;
+    int retries = 0;
+
+    for(;;){
+        vTaskDelay(5000);
+        if (xQueueReceive(response_queue, &msg, 0)){
+            // Parse the response
+            msg.data = parse_command_from_http(msg.data);
+            pos = msg.data.find(" ");
+            num_pos = msg.data.find_first_of("0123456789", pos);
+
+            if (msg.data.length() > 0) {
+                if (msg.data.starts_with("fan")){
+                    modeCommand.type = WriteType::MODE_SET;
+                    modeCommand.value.u16 = 1;
+
+                    valueCommand.type = WriteType::FAN_SPEED;
+                    valueCommand.value.u16 = (uint16_t)std::stoi(msg.data.substr(num_pos));
+
+                    xQueueSend(writing_queue, &modeCommand, 0);
+                    xQueueSend(writing_queue, &valueCommand, 0);
+
+                }
+                else if (msg.data.starts_with("co2")){
+                    modeCommand.type = WriteType::MODE_SET;
+                    modeCommand.value.u16 = 0;
+
+                    valueCommand.type = WriteType::CO2_TARGET;
+                    valueCommand.value.f32 = std::stof(msg.data.substr(num_pos));
+
+                    xQueueSend(writing_queue, &modeCommand, 0);
+                    xQueueSend(writing_queue, &valueCommand, 0);
+                }
+
+            }
+        }
+    }
+}
+
+std::string TLSWrapper::parse_command_from_http(const std::string& http_response) {
+    // Find the first '{' and the last '}'
+    std::size_t start_pos = http_response.find('{');
+    std::size_t end_pos = http_response.rfind('}');
+    std::string substr;
+
+    if (start_pos != std::string::npos && end_pos != std::string::npos && start_pos < end_pos) {
+        substr = http_response.substr(start_pos, end_pos - start_pos + 1);
+    } else {
+        return "";
+    }
+
+    std::string key = "\"command_string\":\"";
+    
+    start_pos = substr.find(key);
+
+    if (start_pos != std::string::npos) {
+        start_pos += key.length();
+        
+        std::size_t end_pos = substr.find('"', start_pos);
+        
+        if (end_pos != std::string::npos) {
+            return substr.substr(start_pos, end_pos - start_pos);
+        }
+    }
+
+    return "";
+}
+
+// void TLSWrapper::reconnect_task_(void *param){
+//     for (;;) {
+//         xTaskNotifyWait(0, 0, NULL, portMAX_DELAY);
+//         bool connected = false;
+//         int retries = 0;
+//         do {
+
+//             TLSWRAPPERprintf("TLSWrapper::TLSWrapper: Connecting to wireless\n");
+//             connected = cyw43_arch_wifi_connect_timeout_ms(ssid.c_str(), password.c_str(), CYW43_AUTH_WPA2_AES_PSK, CONNECTION_TIMEOUT_MS);
+//             if ( connected != 0) {
+//                 TLSWRAPPERprintf("TLSWrapper::TLSWrapper: failed to connect\n");
+//             } else {
+//                 TLSWRAPPERprintf("TLSWrapper::TLSWrapper: connected\n");
+//             }
+//             retries++;
+//         } while (connected != 0 && retries < 5);
+
+//     }
+// }

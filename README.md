@@ -9,6 +9,8 @@ The file needs to be created manually and should contain the following macros:<b
 #ifndef CONNECTION_DEFINES_H
 #define CONNECTION_DEFINES_H
 
+#include "pico/cyw43_arch.h"
+
 #define API_KEY "XXX"
 #define TALK_BACK_API_KEY "XXX"
 #define TALKBACK_ID "XXX"
