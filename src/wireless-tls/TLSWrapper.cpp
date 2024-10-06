@@ -236,8 +236,6 @@ void TLSWrapper::parse_server_commands_task_(void *param){
     Command valueCommand;
     std::size_t pos;
     std::size_t num_pos;
-    bool sent = false;
-    int retries = 0;
 
     for(;;){
         // vTaskDelay(5000);
