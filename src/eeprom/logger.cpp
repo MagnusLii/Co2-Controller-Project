@@ -21,7 +21,7 @@ QueueHandle_t Logger::get_reading_queue_handle(void) {
 
 void Logger::read_eeprom_task(void *pvParameters) {
     auto logger = static_cast<Logger *>(pvParameters);
-    int aa = 0, gg = 0;
+    int aa = 1, gg = 1;
     int arr[2] = {0, 0};
 
     if (xSemaphoreTake(logger->mutex, portMAX_DELAY) == pdTRUE) {
@@ -31,6 +31,7 @@ void Logger::read_eeprom_task(void *pvParameters) {
         logger->fan_speed_return = gg;
         xSemaphoreGive(logger->mutex);
     }
+    logger->is_done = true;
     vTaskDelete(nullptr);
 }
 
@@ -40,6 +41,7 @@ void Logger::write_to_eeprom_task(void *pvParameters){
     int co2_target = 0;
     int fan_speed = 0;
     Reading reading;
+    
     for(;;){
         if (xSemaphoreTake(logger->mutex, portMAX_DELAY) == pdTRUE) {
             xQueueReceive(logger->reading_queue, &reading, portMAX_DELAY);
@@ -70,7 +72,7 @@ void Logger::write_page(uint16_t address, uint8_t *src, size_t size) {
     out[0] = address >> 8; // Upper bits of the address
     out[1] = address; // Lower bits of the address
 
-    for (int i = 0; i < size; i++) {
+    for (size_t i = 0; i < size; i++) {
         out[i + 2] = src[i];
     }
     i2c->write(0x50, out, size + 2);
@@ -119,7 +121,7 @@ void Logger::fetchData(int *co2_target, int *fan_speed, int *arr){
     read_page(0, co2_target_Arr, 64);
     read_page(64, fan_speed_Arr, 64);
 
-    char buffer[20]; // Temporary buffer to store string representation of float
+    // char buffer[20]; // Temporary buffer to store string representation of float
 
     // Check and convert co2_target_Arr to float co2 target
     if (verifyDataIntegrity(co2_target_Arr, (int)co2_target_Arr[1])) {
@@ -127,7 +129,7 @@ void Logger::fetchData(int *co2_target, int *fan_speed, int *arr){
         memcpy(array, co2_target_Arr + 2, (int)co2_target_Arr[1] - 3);
         std::size_t len = (int)co2_target_Arr[1] - 3;
         *co2_target = std::stoi(array, &len);
-        arr[1] = 1;
+        arr[0] = 1;
     }
     // Check and convert fan_speed_Arr to uint16_t fan_speed
     if (verifyDataIntegrity(fan_speed_Arr, (int)fan_speed_Arr[1])) {

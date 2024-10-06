@@ -18,6 +18,7 @@ class Logger {
     static void read_eeprom_task(void *param);
     float co2_target_return;
     uint16_t fan_speed_return;
+    bool is_done = false;
  private:
     std::shared_ptr<PicoI2C> i2c;
     QueueHandle_t reading_queue;

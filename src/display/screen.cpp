@@ -69,6 +69,7 @@ void Screen::set_target_task(void *pvParameters) {
         xQueueReceive(screen->control_queue, &command, portMAX_DELAY);
         switch (command.type) {
         case WriteType::MODE_SET:
+            screen->set_mode((bool)command.value.u16);
             break;
         case WriteType::FAN_SPEED:
             screen->set_fan_speed_percentage(command.value.u16 / 10);
@@ -89,9 +90,9 @@ void Screen::set_static_shapes(void) {
     display->text("CO2:", CO2_X, CO2_Y);
     display->text("RH:", RH_X, RH_Y);
     display->text("hPa:", HPA_X, HPA_Y);
+    display->text("*:", 0, SCREEN_HEIGHT - CHAR_HEIGHT);
+    display->text(":*", SCREEN_WIDTH - 2*CHAR_HEIGHT, SCREEN_HEIGHT - CHAR_HEIGHT);
 
-    display->rect(SPEED_FRAME_X, SPEED_FRAME_Y, SPEED_FRAME_WIDTH, SPEED_FRAME_HEIGHT, 1);
-    display->text("100%", SCREEN_WIDTH - 4 * CHAR_HEIGHT, SCREEN_HEIGHT - CHAR_HEIGHT);
 }
 
 // enum class ReadingType { CO2, TEMPERATURE, REL_HUMIDITY, FAN_COUNTER, PRESSURE, UNSET };
@@ -131,7 +132,7 @@ void Screen::set_fan_speed_percentage(uint16_t percentage) {
     snprintf(text, 16, "%hd%%", percentage);
     reading_blit_buf.fill(0);
     reading_blit_buf.text(text, 0, 0);
-    display->blit(reading_blit_buf, 0, SCREEN_HEIGHT - CHAR_HEIGHT);
+    display->blit(reading_blit_buf, 3 * CHAR_HEIGHT, SCREEN_HEIGHT - CHAR_HEIGHT);
 }
 
 void Screen::set_co2_target(float value) {
@@ -139,7 +140,7 @@ void Screen::set_co2_target(float value) {
     snprintf(text, 16, "%.0f", value);
     reading_blit_buf.fill(0);
     reading_blit_buf.text(text, 0, 0);
-    display->blit(reading_blit_buf, 5 * CHAR_HEIGHT, SCREEN_HEIGHT - CHAR_HEIGHT);
+    display->blit(reading_blit_buf, SCREEN_WIDTH - 6 * CHAR_HEIGHT, SCREEN_HEIGHT - CHAR_HEIGHT);
 }
 
 void Screen::set_bar(uint16_t percentage) {
@@ -148,4 +149,22 @@ void Screen::set_bar(uint16_t percentage) {
     uint16_t new_height = percentage;
     bar_buf.rect(0, SPEED_COLUMN_HEIGHT - new_height, SPEED_COLUMN_WIDTH, new_height, 1, true);
     display->blit(bar_buf, SPEED_COLUMN_X, SPEED_COLUMN_Y);
+}
+
+void Screen::set_mode(bool is_manual) {
+    reading_blit_buf.fill(0);
+    display->blit(reading_blit_buf, SCREEN_WIDTH - 3 * CHAR_HEIGHT, 0);
+    if (is_manual)
+        reading_blit_buf.text("FAN", 0, 0);
+    else
+        reading_blit_buf.text("CO2", 0, 0);
+    display->blit(reading_blit_buf, SCREEN_WIDTH - 3 * CHAR_HEIGHT, 0);
+}
+
+void Screen::set_initial_values(float co2_target, uint16_t fan_speed, bool is_manual) {
+    set_co2_target(co2_target);
+    set_fan_speed_percentage(fan_speed);
+    set_mode(is_manual);
+
+    display->show();
 }

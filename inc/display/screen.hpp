@@ -14,6 +14,7 @@ class Screen {
         Screen(std::shared_ptr<PicoI2C> i2c, uint16_t device_address = 0x3C, uint16_t width = 128, uint16_t height = 64);
         QueueHandle_t get_control_queue_handle(void);
         QueueHandle_t get_reading_queue_handle(void);
+        void set_initial_values(float co2_target, uint16_t fan_speed, bool is_manual);
     private:
         static void screen_task(void *pvParameters);
         static void set_target_task(void *pvParameters);
@@ -22,6 +23,7 @@ class Screen {
         void set_fan_speed_percentage(uint16_t percentage);
         void set_co2_target(float value);
         void set_bar(uint16_t percentage);
+        void set_mode(bool is_manual);
         std::unique_ptr<ssd1306os> display;
         QueueHandle_t control_queue;
         QueueHandle_t reading_queue;

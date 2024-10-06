@@ -43,15 +43,6 @@ void setup_task(void *pvParameters) {
 
     params->screen = std::make_shared<Screen>(params->i2c_1);
     params->rotary = std::make_shared<Rotary>();
-    params->registry->set_initial_values(params->logger->co2_target_return, params->logger->fan_speed_return, false);
-
-    params->rotary->set_initial_values(400, 0, false);
-    params->rotary->set_initial_values(params->logger->co2_target_return, params->logger->fan_speed_return, false);
-    //rice logger to wanted reading values
-    params->registry->subscribe_to_handler(ReadingType::CO2_TARGET, params->logger->get_reading_queue_handle());
-    params->registry->subscribe_to_handler(ReadingType::FAN_SPEED, params->logger->get_reading_queue_handle());
-    params->registry->subscribe_to_handler(ReadingType::MODE, params->logger->get_reading_queue_handle());
-
 
     // subsrice connection to all the reading values
     params->connection = std::make_shared<TLSWrapper>(WIFI_SSID, WIFI_PASSWORD, DEFAULT_COUNTRY_CODE);
@@ -72,6 +63,15 @@ void setup_task(void *pvParameters) {
     params->rotary->add_subscriber(params->registry->get_write_queue_handle());
     params->rotary->add_subscriber(params->screen->get_control_queue_handle());
     params->connection->set_screen_write_handle(params->screen->get_control_queue_handle());
+
+    params->registry->subscribe_to_handler(ReadingType::CO2_TARGET, params->logger->get_reading_queue_handle());
+    params->registry->subscribe_to_handler(ReadingType::FAN_SPEED, params->logger->get_reading_queue_handle());
+    params->registry->subscribe_to_handler(ReadingType::MODE, params->logger->get_reading_queue_handle());
+
+    while (!params->logger->is_done) vTaskDelay(50);
+    params->registry->set_initial_values(params->logger->co2_target_return, params->logger->fan_speed_return, false);
+    params->rotary->set_initial_values(params->logger->co2_target_return, params->logger->fan_speed_return, false);
+    params->screen->set_initial_values(params->logger->co2_target_return, params->logger->fan_speed_return, false);
 
     vTaskSuspend(NULL);
 }
