@@ -285,7 +285,6 @@ bool send_tls_request(const char *server, const char *request, int timeout) {
     mbedtls_ssl_conf_authmode((mbedtls_ssl_config *)tls_config, MBEDTLS_SSL_VERIFY_REQUIRED);
     
     TLS_CLIENT_T *state = tls_client_init();
-    // state = tls_client_init(); // TODO: May cause problems on reinit.
 
     state->http_request = request;
     state->timeout = timeout;
@@ -312,7 +311,6 @@ bool send_tls_request_and_get_response(const char *server, const char *request, 
     mbedtls_ssl_conf_authmode((mbedtls_ssl_config *)tls_config, MBEDTLS_SSL_VERIFY_REQUIRED);
     
     TLS_CLIENT_T *state = tls_client_init();
-    // state = tls_client_init(); // TODO: May cause problems on reinit.
 
     state->http_request = request;
     state->timeout = timeout;
@@ -326,8 +324,7 @@ bool send_tls_request_and_get_response(const char *server, const char *request, 
     }
 
     int err = state->error;
-    if (err == 0 && state->response_stored) {
-        printf("here!");
+    if (state->response_stored) {
         strcpy(response, state->response);
         *response_len = state->response_len;
     }
