@@ -10,6 +10,7 @@
 #include "read_runtime_ctr.cpp"
 #include "rotary.hpp"
 #include "screen.hpp"
+#include "logger.hpp"
 #include "task.h"
 #include "task_defines.h"
 #include "uart_instance.h"
@@ -25,7 +26,7 @@ struct setup_params {
     std::shared_ptr<TLSWrapper> connection;
     std::shared_ptr<Screen> screen;
     std::shared_ptr<Rotary> rotary;
-    // std::shared_ptr<Logger> logger;
+    std::shared_ptr<Logger> logger;
 };
 
 void setup_task(void *pvParameters) {
@@ -35,14 +36,17 @@ void setup_task(void *pvParameters) {
     params->i2c_0 = std::make_shared<PicoI2C>(I2C_0);
     params->i2c_1 = std::make_shared<PicoI2C>(I2C_1);
 
-    // params->logger = std::make_shared<Logger>(params->i2c_0, <INITIALIZE>);
+    params->logger = std::make_shared<Logger>(params->i2c_0);
     params->modbus = std::make_shared<ModbusCtrl>(params->uart);
     params->registry = std::make_shared<DeviceRegistry>(params->modbus, params->i2c_1);
     params->screen = std::make_shared<Screen>(params->i2c_1);
     params->rotary = std::make_shared<Rotary>();
-    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    params->registry->set_initial_values(400, 0, false); //TODO: CHANGE THIS TODO TODO TODO_:::::
+    params->registry->set_initial_values(params->logger->co2_target, params->logger->fan_speed, false);
     params->rotary->set_initial_values(400, 0, false);
+    //rice logger to wanted reading values
+    params->registry->subscribe_to_handler(ReadingType::CO2_TARGET, params->logger->get_reading_queue_handle());
+    params->registry->subscribe_to_handler(ReadingType::FAN_SPEED, params->logger->get_reading_queue_handle());
+
 
     // subsrice connection to all the reading values
     params->connection = std::make_shared<TLSWrapper>(WIFI_SSID, WIFI_PASSWORD, DEFAULT_COUNTRY_CODE);
@@ -80,9 +84,8 @@ int main() {
     std::shared_ptr<TLSWrapper> connection;
     std::shared_ptr<Screen> screen;
     std::shared_ptr<Rotary> rotary;
-    // std::shared_ptr<Logger> logger;
-                                                                                // add logger to params
-    setup_params params{uart_i, i2c_0, i2c_1, mbctrl, registry, connection, screen, rotary}; // <- here
+    std::shared_ptr<Logger> logger;
+    setup_params params{uart_i, i2c_0, i2c_1, mbctrl, registry, connection, screen, rotary, logger};
 
     xTaskCreate(setup_task, "SETUP", 512, &params, TaskPriority::ABSOLUTE, NULL);
     vTaskStartScheduler();
