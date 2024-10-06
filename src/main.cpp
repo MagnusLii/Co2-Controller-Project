@@ -43,7 +43,7 @@ void setup_task(void *pvParameters) {
 
     params->screen = std::make_shared<Screen>(params->i2c_1);
     params->rotary = std::make_shared<Rotary>();
-    params->registry->set_initial_values(params->logger->co2_target, params->logger->fan_speed, false);
+    params->registry->set_initial_values(params->logger->co2_target_return, params->logger->fan_speed_return, false);
     params->rotary->set_initial_values(400, 0, false);
     //rice logger to wanted reading values
     params->registry->subscribe_to_handler(ReadingType::CO2_TARGET, params->logger->get_reading_queue_handle());

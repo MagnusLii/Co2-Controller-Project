@@ -1,7 +1,6 @@
 #ifndef TLSWRAPPER_H
 #define TLSWRAPPER_H
 
-#include "TLSWrapper.h"
 #include <string>
 #include "FreeRTOS.h"
 #include "task.h"
