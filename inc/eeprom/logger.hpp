@@ -9,14 +9,15 @@
 #include "task_defines.h"
 #include <memory>
 #include <cstring>
+#include <cstdint>
 
 class Logger {
   public:
     Logger(shared_i2c i2c_0);
     QueueHandle_t get_reading_queue_handle(void);
     static void read_eeprom_task(void *param);
-    float co2_target;
-    uint16_t fan_speed;
+    float co2_target_return;
+    uint16_t fan_speed_return;
  private:
     std::shared_ptr<PicoI2C> i2c;
     QueueHandle_t reading_queue;
@@ -26,8 +27,8 @@ class Logger {
     void write_byte(uint16_t address, char c);
     void write_page(uint16_t address, uint8_t *src, size_t size);
     void read_page(uint16_t address, uint8_t *dst, size_t size);
-    void storeData(float* co2_target, uint16_t * fan_speed);
-    void fetchData(float *co2_target, uint16_t *fan_speed, int *arr);
+    void storeData(int co2_target, int fan_speed);
+    void fetchData(int *co2_target, int *fan_speed, int *arr);
 };
 
 uint16_t crc16(const uint8_t *data, size_t length);

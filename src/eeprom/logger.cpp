@@ -7,8 +7,8 @@
 
 Logger::Logger(shared_i2c i2c_0) {
     this->i2c = i2c_0;
-    co2_target = 0;
-    fan_speed = 0;
+    co2_target_return = 0;
+    fan_speed_return = 0;
     mutex = xSemaphoreCreateMutex();
     reading_queue = xQueueCreate(20, sizeof(Reading));
     xTaskCreate(read_eeprom_task, "read from eeprom", 256, this, TaskPriority::ABSOLUTE, NULL);
@@ -21,29 +21,24 @@ QueueHandle_t Logger::get_reading_queue_handle(void) {
 
 void Logger::read_eeprom_task(void *pvParameters) {
     auto logger = static_cast<Logger *>(pvParameters);
-    float aa;
-    uint16_t gg;
+    int aa = 0, gg = 0;
     int arr[2] = {0, 0};
 
     if (xSemaphoreTake(logger->mutex, portMAX_DELAY) == pdTRUE) {
         logger->fetchData(&aa, &gg, arr);
 
-        logger->co2_target = aa;
-        logger->fan_speed = gg;
+        logger->co2_target_return = aa;
+        logger->fan_speed_return = gg;
         xSemaphoreGive(logger->mutex);
     }
-
-    std::cout << "CO2 target " << logger->co2_target << std::endl;
-    std::cout << "fan speed " << logger->fan_speed << std::endl;
     vTaskDelete(nullptr);
 }
 
 void Logger::write_to_eeprom_task(void *pvParameters){
     auto logger = static_cast<Logger *>(pvParameters);
-    vTaskDelay(10000);
 
-    float co2_target = 0.0;
-    uint16_t fan_speed = 0;
+    int co2_target = 0;
+    int fan_speed = 0;
     Reading reading;
     for(;;){
         if (xSemaphoreTake(logger->mutex, portMAX_DELAY) == pdTRUE) {
@@ -58,14 +53,9 @@ void Logger::write_to_eeprom_task(void *pvParameters){
                     default:
                         break;
                 }
-
-                std::cout << "CO2 " << co2_target << std::endl;
-                std::cout << "temperature " << fan_speed << std::endl;
-
-                logger->storeData(&co2_target, &fan_speed);
-
-                std::cout << "done " << std::endl;
             }
+        logger->storeData(co2_target, fan_speed);
+        xSemaphoreGive(logger->mutex);
         }
         vTaskDelay(pdMS_TO_TICKS(5000));
     }
@@ -84,8 +74,7 @@ void Logger::write_page(uint16_t address, uint8_t *src, size_t size) {
     for (int i = 0; i < size; i++) {
         out[i + 2] = src[i];
     }
-
-    i2c->write(0x50, out, 2);
+    i2c->write(0x50, out, size + 2);
 }
 
 void Logger::write_byte(uint16_t address, char c) {
@@ -100,28 +89,27 @@ void Logger::read_page(uint16_t address, uint8_t *dst, size_t size) {
     i2c->read(0x50, dst, size);
 }
 
-void Logger::storeData(float* co2_target, uint16_t * fan_speed){
-    char co2_targ_Str[20], fan_speed_Str[20];
-    snprintf(co2_targ_Str, sizeof(co2_targ_Str), "%f", co2_target);
-    snprintf(fan_speed_Str, sizeof(fan_speed_Str), "%u", fan_speed);
+void Logger::storeData(int co2_target, int fan_speed){
+    char co2_target_str[10], fan_speed_str[10];
+    snprintf(co2_target_str, sizeof(co2_target_str), "%d", co2_target);
+    snprintf(fan_speed_str, sizeof(fan_speed_str), "%d", fan_speed);
 
     uint8_t co2_target_Arr[64];
     uint8_t fan_speed_Arr[64];
 
-    int co2_target_Len = createCredentialArray(co2_targ_Str, co2_target_Arr);
-    int fan_speed_Len = createCredentialArray(fan_speed_Str, fan_speed_Arr);
+    int co2_target_Len = createCredentialArray(co2_target_str, co2_target_Arr);
+    int fan_speed_Len = createCredentialArray(fan_speed_str, fan_speed_Arr);
 
     appendCrcToBase8Array(co2_target_Arr, &co2_target_Len);
     appendCrcToBase8Array(fan_speed_Arr, &fan_speed_Len);
 
-    //TODO halutaan tallentaa co2 target, fanspeed ja mode
-    write_page(4160 + (64 * 0), co2_target_Arr, co2_target_Len);
-    write_page(4160 + (64 * 1), fan_speed_Arr, fan_speed_Len);
+    write_page(0, co2_target_Arr, co2_target_Len);
+    write_page(64, fan_speed_Arr, fan_speed_Len);
 
     return;
 }
 
-void Logger::fetchData(float *co2_target, uint16_t *fan_speed, int *arr){
+void Logger::fetchData(int *co2_target, int *fan_speed, int *arr){
     uint8_t co2_target_Arr[64];
     uint8_t fan_speed_Arr[64];
 
@@ -129,35 +117,41 @@ void Logger::fetchData(float *co2_target, uint16_t *fan_speed, int *arr){
         arr[i] = 0;
     }
 
-    read_page(4160 + (64 * 0), co2_target_Arr, 64);
-    read_page(4160 + (64 * 1), fan_speed_Arr, 64);
+    read_page(0, co2_target_Arr, 64);
+    read_page(64, fan_speed_Arr, 64);
 
     char buffer[20]; // Temporary buffer to store string representation of float
 
     // Check and convert co2_target_Arr to float co2 target
     if (verifyDataIntegrity(co2_target_Arr, (int)co2_target_Arr[1])) {
-        memcpy(buffer, co2_target_Arr + 2, (int)co2_target_Arr[1] - 3);
-        buffer[(int)co2_target_Arr[1] - 3] = '\0'; // Null-terminate string
-        *co2_target = std::strtof(buffer, nullptr);
-        arr[0] = 1;
-    }
-
-    // Check and convert fan_speed_Arr to uint16_t fan_speed
-    if (verifyDataIntegrity(fan_speed_Arr, (int)fan_speed_Arr[1])) {
-        memcpy(buffer, fan_speed_Arr + 2, (int)fan_speed_Arr[1] - 3);
-        buffer[(int)fan_speed_Arr[1] - 3] = '\0'; // Null-terminate string
-
-        unsigned long fan_speed_value = std::strtoul(buffer, nullptr, 10);
-
-        if (fan_speed_value <= UINT16_MAX) {
-            *fan_speed = (uint16_t)fan_speed_value;  // Cast to uint16_t
-        } else {
-            std::cout << "fuq" << std::endl;
-        }
+        char array[10];
+        memcpy(array, co2_target_Arr + 2, (int)co2_target_Arr[1] - 3);
+        std::size_t len = (int)co2_target_Arr[1] - 3;
+        *co2_target = std::stoi(array, &len);
         arr[1] = 1;
     }
-
+    // Check and convert fan_speed_Arr to uint16_t fan_speed
+    if (verifyDataIntegrity(fan_speed_Arr, (int)fan_speed_Arr[1])) {
+        char array[10];
+        memcpy(array, fan_speed_Arr + 2, (int)fan_speed_Arr[1] - 3);
+        std::size_t len = (int)fan_speed_Arr[1] - 3;
+        *fan_speed = std::stoi(array, &len);
+        arr[1] = 1;
+    }
     return;
+}
+
+uint16_t crc16(const uint8_t *data, size_t length) {
+    uint8_t x;
+    uint16_t crc = 0xFFFF;
+
+    while (length--) {
+        x = crc >> 8 ^ *data++;
+        x ^= x >> 4;
+        crc = (crc << 8) ^ (static_cast<uint16_t>(x << 12)) ^ (static_cast<uint16_t>(x << 5)) ^ static_cast<uint16_t>(x);
+    }
+
+    return crc;
 }
 
 void appendCrcToBase8Array(uint8_t *base8Array, int *arrayLen){
