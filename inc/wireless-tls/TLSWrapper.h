@@ -25,6 +25,8 @@
 #include "lwip/altcp_tcp.h"
 #include "lwip/altcp_tls.h"
 #include "lwip/dns.h"
+#include "Fmutex.h"
+#include <mutex>
 
 #define SEND_QUEUE_SIZE 64
 #define RECEIVE_QUEUE_SIZE 64
@@ -96,6 +98,7 @@ private:
     QueueHandle_t sensor_data_queue;
     QueueHandle_t response_queue;
     TaskHandle_t reconnect_task_handle;
+    Fmutex mutex;
 };
 
 #endif //TLSWRAPPER_H

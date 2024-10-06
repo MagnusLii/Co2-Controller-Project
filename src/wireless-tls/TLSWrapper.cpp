@@ -41,7 +41,11 @@ TLSWrapper::TLSWrapper(const std::string& ssid, const std::string& password, uin
     :
      ssid(ssid),
      password(password),
-     countryCode(countryCode){
+     countryCode(countryCode),
+     mutex(){
+        reading_queue = xQueueCreate(20, sizeof(Reading));
+        sensor_data_queue = xQueueCreate(5, sizeof(Message));
+        response_queue = xQueueCreate(5, sizeof(Message));
 
         TLSWRAPPERprintf("TLSWrapper::TLSWrapper: Initializing TLSWrapper\n");
         if (cyw43_arch_init_with_country(countryCode) != 0) {
@@ -63,10 +67,7 @@ TLSWrapper::TLSWrapper(const std::string& ssid, const std::string& password, uin
             }
             retries++;
         } while (connected != 0 && retries < 5);
-        reading_queue = xQueueCreate(20, sizeof(Reading));
 
-        sensor_data_queue = xQueueCreate(5, sizeof(Message));
-        response_queue = xQueueCreate(5, sizeof(Message));
 
 
         // TODO: VERIFY STACK SIZES
@@ -83,7 +84,9 @@ TLSWrapper::~TLSWrapper() {
 
 void TLSWrapper::send_request(const std::string& endpoint, const std::string& request){
     TLSWRAPPERprintf("TLSWrapper::send_request: %s\n", request.c_str());
+    mutex.lock();
     send_tls_request(endpoint.c_str(), request.c_str(), CONNECTION_TIMEOUT_MS);
+    mutex.unlock();
 }
 
 void TLSWrapper::send_request_and_get_response(const std::string& endpoint, const std::string& request){
@@ -91,9 +94,11 @@ void TLSWrapper::send_request_and_get_response(const std::string& endpoint, cons
     char response[MAX_BUFFER_SIZE];
     size_t response_len = 0;
 
+    // std::lock_guard<Fmutex> exclusive(mutex);
+    mutex.lock();
     TLSWRAPPERprintf("TLSWrapper::send_request_and_get_response: %s\n", request.c_str());
     send_tls_request_and_get_response(endpoint.c_str(), request.c_str(), CONNECTION_TIMEOUT_MS, response, &response_len);
-
+    mutex.unlock();
     TLSWRAPPERprintf("TLSWrapper::response from server: %s\n %d", response, response_len);
     
     receivedMsg.data = response;
@@ -106,10 +111,14 @@ void TLSWrapper::create_field_update_request(Message &messageContainer, const st
     messageContainer.data += "GET /update?api_key=";
     messageContainer.data += API_KEY;
 
-    for (int i = 0; i < (int)ReadingType::end; i++) {
+    for (int i = 0; i < 5; i++) {
         messageContainer.data += FIELD_NAMES[i];
         char buffer[69];
-        snprintf(buffer, sizeof(buffer), "%.2f", values[i]);
+        if (values[i].type == ReadingType::FAN_SPEED) {
+            snprintf(buffer, sizeof(buffer), "%d", values[i].value.u16);
+        } else {
+            snprintf(buffer, sizeof(buffer), "%.2f", values[i].value.f32);
+        }
         messageContainer.data += buffer;
     }
 
@@ -195,7 +204,10 @@ void TLSWrapper::send_field_update_request_task_(void *asd){
     for(;;){
         vTaskDelay(1000);
         if (xQueueReceive(sensor_data_queue, &msg, 0)){
+            // std::lock_guard<Fmutex> exclusive(mutex);
+            // mutex.lock();
             send_request(hostname, msg.data);
+            // mutex.unlock();
         }
     }
 }
