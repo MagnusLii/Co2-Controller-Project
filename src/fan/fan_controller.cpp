@@ -41,44 +41,6 @@ void FanController::fan_control() {
                 counter = reading.value.u16;
             }
         }
-
-        // Command command;
-        // if (xQueueReceive(write_queue, &command, pdMS_TO_TICKS(10))) {
-        //     if (command.type == WriteType::CO2_TARGET && !manual_mode) {
-        //         manual_mode = true;
-        //         co2_target = command.value.f32;
-        //     } else if (command.type == WriteType::FAN_SPEED && manual_mode) {
-        //         manual_mode = true;
-        //         set_speed(command.value.u16);
-        //     } else if (command.type == WriteType::MODE_SET) {
-        //         if (command.value.u16 == 0) manual_mode = false;
-        //         if (command.value.u16 == 1) manual_mode = true;
-        //     } else if (command.type == WriteType::ROT_SW) {
-        //         local_manual_mode = !local_manual_mode;
-        //     } else if (command.type == WriteType::TURN) {
-        //         if (command.value.u16 == CLOCKWISE) {
-        //             if (local_manual_mode) {
-        //                 if (local_speed < 1000) local_speed += 100;
-        //             } else {
-        //                 if (local_co2_target < 1500) local_co2_target += 100;
-        //             }
-        //         } else {
-        //             if (local_manual_mode) {
-        //                 if (local_speed > 0) local_speed -= 100;
-        //             } else {
-        //                 if (local_co2_target > 0) local_co2_target -= 100;
-        //             }
-        //         }
-        //     } else if (command.type == WriteType::TOGGLE) {
-        //         manual_mode = local_manual_mode;
-        //         if (manual_mode) {
-        //             set_speed(local_speed);
-        //         } else {
-        //             co2_target = local_co2_target;
-        //         }
-        //     }
-        // }
-
         if (!manual_mode) {
             if (co2 >= CO2_CRITICAL) {
                 uint16_t new_speed = FAN_MAX;
@@ -95,40 +57,21 @@ void FanController::fan_control() {
 
 void FanController::fan_read() {
     Command command;
+    bool changed = false;
     while (true) {
         if (xQueueReceive(write_queue, &command, portMAX_DELAY)) {
-            if (command.type == WriteType::CO2_TARGET && !manual_mode) {
-                manual_mode = true;
+            if (command.type == WriteType::CO2_TARGET && !manual_mode && changed) {
+                changed = false;
                 co2_target = command.value.f32;
-            } else if (command.type == WriteType::FAN_SPEED && manual_mode) {
-                manual_mode = true;
+                std::cout << "co2 target: " << command.value.f32 << std::endl;
+            } else if (command.type == WriteType::FAN_SPEED && manual_mode && changed) {
+                changed = false;
                 set_speed(command.value.u16);
+                std::cout << "speed target: " << command.value.u16 << std::endl;
             } else if (command.type == WriteType::MODE_SET) {
+                changed = true;
                 if (command.value.u16 == 0) manual_mode = false;
                 if (command.value.u16 == 1) manual_mode = true;
-            } else if (command.type == WriteType::ROT_SW) {
-                local_manual_mode = !local_manual_mode;
-            } else if (command.type == WriteType::TURN) {
-                if (command.value.u16 == CLOCKWISE) {
-                    if (local_manual_mode) {
-                        if (local_speed < 1000) local_speed += 100;
-                    } else {
-                        if (local_co2_target < 1500) local_co2_target += 100;
-                    }
-                } else {
-                    if (local_manual_mode) {
-                        if (local_speed > 0) local_speed -= 100;
-                    } else {
-                        if (local_co2_target > 0) local_co2_target -= 100;
-                    }
-                }
-            } else if (command.type == WriteType::TOGGLE) {
-                manual_mode = local_manual_mode;
-                if (manual_mode) {
-                    set_speed(local_speed);
-                } else {
-                    co2_target = local_co2_target;
-                }
             }
         }
     }

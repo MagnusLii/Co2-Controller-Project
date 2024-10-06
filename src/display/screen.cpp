@@ -39,8 +39,10 @@ Screen::Screen(std::shared_ptr<PicoI2C> i2c, uint16_t device_address, uint16_t w
   bar_buf(SPEED_FRAME_WIDTH - 4, SPEED_FRAME_HEIGHT - 4) {
     // display = std::make_unique<ssd1306os>(i2c, device_address, width, height);
     reading_queue = xQueueCreate(20, sizeof(Reading));
+    control_queue = xQueueCreate(50, sizeof(Command));
     set_static_shapes();
     xTaskCreate(Screen::screen_task, "SCREEN", 512, this, TaskPriority::ABSOLUTE, NULL);
+    xTaskCreate(Screen::set_target_task, "SCREENTARGET", 512, this, TaskPriority::ABSOLUTE, NULL);
 }
 
 QueueHandle_t Screen::get_control_queue_handle(void) {
@@ -64,32 +66,20 @@ void Screen::set_target_task(void *pvParameters) {
     auto screen = static_cast<Screen *>(pvParameters);
     Command command;
     while (true) {
-        xQueueCRReceive(screen->control_queue, &command, portMAX_DELAY);
+        xQueueReceive(screen->control_queue, &command, portMAX_DELAY);
         switch (command.type) {
-        case WriteType::ROT_SW:
-            is_manual = !is_manual;
+        case WriteType::MODE_SET:
             break;
-        case WriteType::TOGGLE:
+        case WriteType::FAN_SPEED:
+            screen->set_fan_speed_percentage(command.value.u16 / 10);
             break;
-        case WriteType::TURN:
-            if (is_manual) {
-                if (command.value.u16 == CLOCKWISE) {
-                    if (fan_speed_local < 1000) fan_speed_local += 100;
-                } else {
-                    if (fan_speed_local > 0) fan_speed_local -= 100;
-                }
-            } else {
-                if (command.value.u16 == CLOCKWISE) {
-                    if (fan_speed_local < 1000) fan_speed_local += 100;
-                } else {
-                    if (fan_speed_local > 0) fan_speed_local -= 100;
-                }
-            }
+        case WriteType::CO2_TARGET:
+            screen->set_co2_target(command.value.f32);
             break;
         default:
             break;
         }
-        screen->set_bar(100);
+        screen->display->show();
     }
 }
 
@@ -134,6 +124,22 @@ void Screen::set_reading_value(Reading &reading) {
     display->blit(reading_blit_buf, READING_X, height); // clear the area
     reading_blit_buf.text(text, 0, 0);
     display->blit(reading_blit_buf, READING_X, height); // blit the text
+}
+
+void Screen::set_fan_speed_percentage(uint16_t percentage) {
+    char text[16];
+    snprintf(text, 16, "%hd%%", percentage);
+    reading_blit_buf.fill(0);
+    reading_blit_buf.text(text, 0, 0);
+    display->blit(reading_blit_buf, 0, SCREEN_HEIGHT - CHAR_HEIGHT);
+}
+
+void Screen::set_co2_target(float value) {
+    char text[16];
+    snprintf(text, 16, "%.0f", value);
+    reading_blit_buf.fill(0);
+    reading_blit_buf.text(text, 0, 0);
+    display->blit(reading_blit_buf, 5 * CHAR_HEIGHT, SCREEN_HEIGHT - CHAR_HEIGHT);
 }
 
 void Screen::set_bar(uint16_t percentage) {

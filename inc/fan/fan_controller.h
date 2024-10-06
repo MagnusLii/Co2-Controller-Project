@@ -4,6 +4,7 @@
 #include "register_handler.h"
 
 #include <memory>
+#include <iostream>
 
 #define CO2_MIN       0
 #define CO2_MAX       1500
@@ -52,9 +53,6 @@ class FanController {
 
     // TODO: Do we do this?
     bool manual_mode = false; // if true, stop all automagical fan adjustments
-    float local_co2_target;
-    uint16_t local_speed;
-    bool local_manual_mode;
 };
 
 class FanCtrlReadHandler : public ReadRegisterHandler {

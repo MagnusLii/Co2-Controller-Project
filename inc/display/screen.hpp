@@ -7,6 +7,7 @@
 #include "rotary.hpp"
 
 #include <map>
+#include <iostream>
 
 class Screen {
     public:
@@ -15,18 +16,17 @@ class Screen {
         QueueHandle_t get_reading_queue_handle(void);
     private:
         static void screen_task(void *pvParameters);
-        void set_target_task(void *pvParameters);
+        static void set_target_task(void *pvParameters);
         void set_static_shapes(void);
         void set_reading_value(Reading &reading);
+        void set_fan_speed_percentage(uint16_t percentage);
+        void set_co2_target(float value);
         void set_bar(uint16_t percentage);
         std::unique_ptr<ssd1306os> display;
         QueueHandle_t control_queue;
         QueueHandle_t reading_queue;
         mono_vlsb reading_blit_buf;
         mono_vlsb bar_buf;
-        float co2_target_local;
-        uint16_t fan_speed_local;
-        bool is_manual;
 };
 
 #endif

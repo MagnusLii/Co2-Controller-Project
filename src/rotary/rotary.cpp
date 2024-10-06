@@ -31,28 +31,59 @@ Rotary::Rotary(uint ROT_SW, uint ROT_A, uint ROT_B, uint button)
     gpio_set_irq_enabled(rot_a, GPIO_IRQ_EDGE_FALL, true);
     gpio_set_irq_enabled(rot_b, GPIO_IRQ_EDGE_FALL, true);
     gpio_set_irq_enabled(button, GPIO_IRQ_EDGE_FALL, true);
+    xTaskCreate(Rotary::send_task, "ROTARY", 512, this, TaskPriority::ABSOLUTE, NULL);
 }
 
-
 void Rotary::irq_handler(uint gpio, uint32_t mask) {
+    changed = true;
     if ((gpio == rot_sw) && (mask & GPIO_IRQ_EDGE_FALL)) {
         if (debounce()) {
-            command.type = WriteType::ROT_SW;
-            send_reading_from_isr();
+            this->is_manual_local = !this->is_manual_local;
         }
     } else if ((gpio == rot_a) && (mask & GPIO_IRQ_EDGE_FALL)) {
-        command.type = WriteType::TURN;
         if (gpio_get(rot_b)) {
-            command.value.u16 = CLOCKWISE;
+            if (this->is_manual_local) {
+                if (this->fan_speed_local < 1000) this->fan_speed_local += 10;
+            } else {
+                if (this->co2_target_local < 1500) this->co2_target_local +=10;
+            }
         } else {
-            command.value.u16 = COUNTER_CLOCKWISE;
+            if (this->is_manual_local) {
+                if (this->fan_speed_local > 0) this->fan_speed_local -= 10;
+            } else {
+                if (this->co2_target_local > 0) this->co2_target_local -=10;
+            }
         }
         send_reading_from_isr();
     } else if ((gpio == button) && (mask & GPIO_IRQ_EDGE_FALL)) {
         if (debounce()) {
-            command.type = WriteType::TOGGLE;
-            send_reading_from_isr();
+            this->toggled = true;
         }
+    }
+}
+
+void Rotary::send_task(void *pvParameters) {
+    auto rot = static_cast<Rotary*>(pvParameters);
+
+    while (true) {
+        if (rot->changed) {
+            rot->changed = false;
+            if (rot->toggled) {
+                rot->toggled = false;
+                rot->command.type = WriteType::MODE_SET;
+                rot->command.value.u16 = rot->is_manual_local ? 1 : 0;
+                rot->send_reading();   
+            }
+            if (rot->is_manual_local) {
+                rot->command.type = WriteType::FAN_SPEED;
+                rot->command.value.u16 = rot->fan_speed_local;
+            } else {
+                rot->command.type = WriteType::CO2_TARGET;
+                rot->command.value.f32 = rot->co2_target_local;
+            }
+            rot->send_reading();
+        }
+        vTaskDelay(50);
     }
 }
 
@@ -70,15 +101,18 @@ void Rotary::send_reading_from_isr() {
     for (const auto subscriber : subscribers) {
         xQueueSendFromISR(subscriber, &command, 0);
     }
-    // xQueueSendFromISR(screen_queue, &command, 0);
-    // xQueueSendFromISR(fan_queue, &command, 0);
 }
 
-void Rotary::set_screen_queue(QueueHandle_t queue) {
-    screen_queue = queue;
+void Rotary::send_reading() {
+    for (const auto subscriber : subscribers) {
+        xQueueSend(subscriber, &command, 0);
+    }
 }
-void Rotary::set_fanctrl_queue(QueueHandle_t queue) {
-    fan_queue = queue;
+
+void Rotary::set_initial_values(float co2_target, uint16_t fan_speed, bool is_manual) {
+    this->co2_target_local = co2_target;
+    this->fan_speed_local = fan_speed;
+    this->is_manual_local = is_manual;
 }
 
 
