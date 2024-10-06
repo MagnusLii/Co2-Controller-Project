@@ -21,6 +21,7 @@ class FanController {
     [[nodiscard]] QueueHandle_t get_write_queue_handle() const;
     uint16_t get_speed() const;
     float get_co2_target() const;
+    bool get_mode() const;
     void set_initial_values(float co2_target, uint16_t fan_speed, bool is_manual);
 
   private:
@@ -75,6 +76,12 @@ class FanSpeedReadHandler : public FanCtrlReadHandler {
 class CO2TargetReadHandler : public FanCtrlReadHandler {
   public:
     CO2TargetReadHandler(std::shared_ptr<FanController> fanctrl, const std::string &name = "CO2 Target Read");
+    void get_reading() override;
+};
+
+class ModeReadHandler : public FanCtrlReadHandler {
+  public:
+    ModeReadHandler(std::shared_ptr<FanController> fanctrl, const std::string &name = "Mode Read");
     void get_reading() override;
 };
 

@@ -50,6 +50,7 @@ void setup_task(void *pvParameters) {
     //rice logger to wanted reading values
     params->registry->subscribe_to_handler(ReadingType::CO2_TARGET, params->logger->get_reading_queue_handle());
     params->registry->subscribe_to_handler(ReadingType::FAN_SPEED, params->logger->get_reading_queue_handle());
+    params->registry->subscribe_to_handler(ReadingType::MODE, params->logger->get_reading_queue_handle());
 
 
     // subsrice connection to all the reading values

@@ -44,8 +44,10 @@ void DeviceRegistry::initialize() {
 
     auto r_fan_speed = std::make_shared<FanSpeedReadHandler>(fanctrl);
     auto co2_target = std::make_shared<CO2TargetReadHandler>(fanctrl);
+    auto mode = std::make_shared<ModeReadHandler>(fanctrl);
     add_register_handler(std::move(r_fan_speed), ReadingType::FAN_SPEED);
     add_register_handler(std::move(co2_target), ReadingType::CO2_TARGET);
+    add_register_handler(std::move(mode), ReadingType::MODE);
 
     vTaskSuspend(nullptr);
 }

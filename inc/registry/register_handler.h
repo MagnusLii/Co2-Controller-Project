@@ -23,7 +23,7 @@ enum class ReadingType {
     CO2_TARGET,
     FAN_COUNTER,
     PRESSURE,
-    end
+    MODE
 };
 
 enum class WriteType {

@@ -26,6 +26,7 @@
 #include <algorithm>
 #include "task_defines.h"
 #include <iostream>
+#include <array>
 
 const char* FIELD_NAMES[] = {
     "&field1=",

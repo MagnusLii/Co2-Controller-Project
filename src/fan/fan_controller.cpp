@@ -28,6 +28,8 @@ uint16_t FanController::get_speed() const { return speed; }
 
 float FanController::get_co2_target() const { return co2_target; }
 
+bool FanController::get_mode() const { return manual_mode; }
+
 void FanController::fan_control() {
     set_speed(0);
     vTaskDelay(pdMS_TO_TICKS(500));
@@ -143,3 +145,12 @@ CO2TargetReadHandler::CO2TargetReadHandler(std::shared_ptr<FanController> fanctr
 }
 
 void CO2TargetReadHandler::get_reading() { reading.value.f32 = fanctrl->get_co2_target(); }
+
+ModeReadHandler::ModeReadHandler(std::shared_ptr<FanController> fanctrl, const std::string &name) {
+    this->reading = {ReadingType::MODE, {0}};
+    this->fanctrl = fanctrl;
+    this->name = name;
+    xTaskCreate(read_fanctrl_register_task, name.c_str(), 256, this, TaskPriority::MEDIUM, nullptr);
+}
+
+void ModeReadHandler::get_reading() { reading.value.u16 = fanctrl->get_mode(); }
