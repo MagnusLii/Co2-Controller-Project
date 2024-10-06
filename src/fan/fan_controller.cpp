@@ -117,18 +117,20 @@ void FanCtrlReadHandler::read_fanctrl_register() {
     }
 }
 
-FanSpeedReadHandler::FanSpeedReadHandler(std::shared_ptr<FanController> fanctrl) {
+FanSpeedReadHandler::FanSpeedReadHandler(std::shared_ptr<FanController> fanctrl, const std::string &name) {
     this->reading = {ReadingType::FAN_SPEED, {0}};
     this->fanctrl = fanctrl;
-    xTaskCreate(read_fanctrl_register_task, "FanSpeedReadHandler", 256, this, TaskPriority::MEDIUM, nullptr);
+    this->name = name;
+    xTaskCreate(read_fanctrl_register_task, name.c_str(), 256, this, TaskPriority::MEDIUM, nullptr);
 }
 
 void FanSpeedReadHandler::get_reading() { reading.value.u16 = fanctrl->get_speed(); }
 
-CO2TargetReadHandler::CO2TargetReadHandler(std::shared_ptr<FanController> fanctrl) {
+CO2TargetReadHandler::CO2TargetReadHandler(std::shared_ptr<FanController> fanctrl, const std::string &name) {
     this->reading = {ReadingType::CO2_TARGET, {0}};
     this->fanctrl = fanctrl;
-    xTaskCreate(read_fanctrl_register_task, "CO2TargetReadHandler", 256, this, TaskPriority::MEDIUM, nullptr);
+    this->name = name;
+    xTaskCreate(read_fanctrl_register_task, name.c_str(), 256, this, TaskPriority::MEDIUM, nullptr);
 }
 
 void CO2TargetReadHandler::get_reading() { reading.value.f32 = fanctrl->get_co2_target(); }

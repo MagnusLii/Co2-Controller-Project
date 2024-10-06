@@ -62,15 +62,13 @@ class FanCtrlReadHandler : public ReadRegisterHandler {
 
 class FanSpeedReadHandler : public FanCtrlReadHandler {
   public:
-    FanSpeedReadHandler(std::shared_ptr<FanController> fanctrl);
+    FanSpeedReadHandler(std::shared_ptr<FanController> fanctrl, const std::string &name = "Fan Speed Read");
     void get_reading() override;
-
-  private:
 };
 
 class CO2TargetReadHandler : public FanCtrlReadHandler {
   public:
-    CO2TargetReadHandler(std::shared_ptr<FanController> fanctrl);
+    CO2TargetReadHandler(std::shared_ptr<FanController> fanctrl, const std::string &name = "CO2 Target Read");
     void get_reading() override;
 };
 
