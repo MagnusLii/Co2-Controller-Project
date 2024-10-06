@@ -42,17 +42,16 @@ void Logger::write_to_eeprom_task(void *pvParameters){
     Reading reading;
     for(;;){
         if (xSemaphoreTake(logger->mutex, portMAX_DELAY) == pdTRUE) {
-            while (xQueueReceive(logger->reading_queue, &reading, 0) == pdTRUE){
-                switch (reading.type) {
-                    case ReadingType::CO2:
-                        co2_target = reading.value.f32;
-                        break;
-                    case ReadingType::FAN_SPEED:
-                        fan_speed = reading.value.u16;
-                        break;
-                    default:
-                        break;
-                }
+            xQueueReceive(logger->reading_queue, &reading, portMAX_DELAY);
+            switch (reading.type) {
+                case ReadingType::CO2:
+                    co2_target = reading.value.f32;
+                    break;
+                case ReadingType::FAN_SPEED:
+                    fan_speed = reading.value.u16;
+                    break;
+                default:
+                    break;
             }
         logger->storeData(co2_target, fan_speed);
         xSemaphoreGive(logger->mutex);
