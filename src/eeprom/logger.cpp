@@ -31,9 +31,6 @@ void Logger::read_eeprom_task(void *pvParameters) {
         logger->fan_speed_return = gg;
         xSemaphoreGive(logger->mutex);
     }
-
-    std::cout << "CO2 target: " << logger->co2_target_return << std::endl;
-    std::cout << "fan speed: " << logger->fan_speed_return << std::endl;
     vTaskDelete(nullptr);
 }
 
