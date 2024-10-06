@@ -44,11 +44,6 @@ void setup_task(void *pvParameters) {
     params->registry->set_initial_values(400, 0, false); //TODO: CHANGE THIS TODO TODO TODO_:::::
     params->rotary->set_initial_values(400, 0, false);
 
-    
-
-    
-
-
     // subsrice connection to all the reading values
     params->connection = std::make_shared<TLSWrapper>(WIFI_SSID, WIFI_PASSWORD, DEFAULT_COUNTRY_CODE);
     params->registry->subscribe_to_handler(ReadingType::CO2, params->connection->get_read_handle());
