@@ -4,6 +4,7 @@
 #include "ssd1306os.h"
 #include "register_handler.h"
 #include "task_defines.h"
+#include "rotary.hpp"
 
 #include <map>
 
@@ -23,6 +24,9 @@ class Screen {
         QueueHandle_t reading_queue;
         mono_vlsb reading_blit_buf;
         mono_vlsb bar_buf;
+        float co2_target_local;
+        uint16_t fan_speed_local;
+        bool is_manual;
 };
 
 #endif

@@ -28,6 +28,11 @@ class FanController {
         auto *fanctrl = static_cast<FanController *>(pvParameters);
         fanctrl->fan_control();
     }
+    void fan_read();
+    static void fan_read_task(void *pvParameters) {
+        auto *fanctrl = static_cast<FanController *>(pvParameters);
+        fanctrl->fan_read();
+    }
 
     void set_speed(uint16_t speed);
     void is_fan_spinning(const uint16_t &new_count);
@@ -47,6 +52,9 @@ class FanController {
 
     // TODO: Do we do this?
     bool manual_mode = false; // if true, stop all automagical fan adjustments
+    float local_co2_target;
+    uint16_t local_speed;
+    bool local_manual_mode;
 };
 
 class FanCtrlReadHandler : public ReadRegisterHandler {

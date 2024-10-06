@@ -41,8 +41,7 @@ void setup_task(void *pvParameters) {
     // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     params->registry->set_initial_values(400, 0, false); //TODO: CHANGE THIS TODO TODO TODO_:::::
 
-    params->screen = std::make_shared<Screen>(params->i2c_1);
-    params->rotary = std::make_shared<Rotary>();
+    
 
 
     // subsrice connection to all the reading values
@@ -53,6 +52,9 @@ void setup_task(void *pvParameters) {
     params->registry->subscribe_to_handler(ReadingType::CO2_TARGET, params->connection->get_read_handle());
     params->registry->subscribe_to_handler(ReadingType::FAN_SPEED, params->connection->get_read_handle());
     params->connection->set_write_handle(params->registry->get_write_queue_handle());
+
+    params->screen = std::make_shared<Screen>(params->i2c_1);
+    params->rotary = std::make_shared<Rotary>();
     // subscribing screen to wanted reading values
     params->registry->subscribe_to_handler(ReadingType::CO2, params->screen->get_reading_queue_handle());
     params->registry->subscribe_to_handler(ReadingType::TEMPERATURE, params->screen->get_reading_queue_handle());
@@ -60,8 +62,12 @@ void setup_task(void *pvParameters) {
     params->registry->subscribe_to_handler(ReadingType::PRESSURE, params->screen->get_reading_queue_handle());
     params->registry->subscribe_to_handler(ReadingType::FAN_SPEED, params->screen->get_reading_queue_handle());
     params->registry->subscribe_to_handler(ReadingType::CO2_TARGET, params->screen->get_reading_queue_handle());
-    params->rotary->add_subscriber(params->screen->get_control_queue_handle());
 
+    params->rotary->add_subscriber(params->registry->get_write_queue_handle());
+    // params->rotary->set_screen_queue(params->screen->get_control_queue_handle());
+    // params->rotary->set_fanctrl_queue(params->registry->get_write_queue_handle());
+
+    // params->rotary->add_subscriber(params->registry->get_write_queue_handle());
     vTaskSuspend(NULL);
 }
 

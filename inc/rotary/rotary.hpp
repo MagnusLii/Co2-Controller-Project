@@ -7,6 +7,10 @@
 #include "queue.h"
 
 #include "register_handler.h"
+#include <vector>
+
+#define COUNTER_CLOCKWISE 2
+#define CLOCKWISE 1
 
 
 class Rotary {
@@ -16,6 +20,8 @@ class Rotary {
         // void subscribe_to_handler(ReadingType type, QueueHandle_t receiver);
         void add_subscriber(QueueHandle_t subscriber);
         void remove_subscriber(QueueHandle_t subscriber);
+        void set_screen_queue(QueueHandle_t queue);
+        void set_fanctrl_queue(QueueHandle_t queue);
     private:
         void send_reading_from_isr();
         void irq_handler(uint gpio, uint32_t mask);
@@ -25,10 +31,10 @@ class Rotary {
         const uint rot_a;
         const uint rot_b;
         const uint button;
-        bool is_co2 = false;
-        uint16_t position = 0;
         uint32_t time;
         std::vector<QueueHandle_t> subscribers;
+        QueueHandle_t screen_queue;
+        QueueHandle_t fan_queue;
         Command command;
 };
 

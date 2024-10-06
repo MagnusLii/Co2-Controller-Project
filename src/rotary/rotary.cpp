@@ -3,9 +3,6 @@
 
 
 
-#define COUNTER_CLOCKWISE 2
-#define CLOCKWISE 1
-
 #define DELAY_MS 250
 
 bool Rotary::debounce(void) {
@@ -26,6 +23,10 @@ void rotary_irq_handler(uint gpio, uint32_t mask) {
 Rotary::Rotary(uint ROT_SW, uint ROT_A, uint ROT_B, uint button)
 : rot_sw(ROT_SW), rot_a(ROT_A), rot_b(ROT_B), button(button) {
     rotary = this;
+    gpio_init(rot_sw);
+    gpio_init(button);
+    gpio_pull_up(rot_sw);
+    gpio_pull_up(button);
     gpio_set_irq_enabled_with_callback(rot_sw, GPIO_IRQ_EDGE_FALL, true, rotary_irq_handler);
     gpio_set_irq_enabled(rot_a, GPIO_IRQ_EDGE_FALL, true);
     gpio_set_irq_enabled(rot_b, GPIO_IRQ_EDGE_FALL, true);
@@ -36,20 +37,20 @@ Rotary::Rotary(uint ROT_SW, uint ROT_A, uint ROT_B, uint button)
 void Rotary::irq_handler(uint gpio, uint32_t mask) {
     if ((gpio == rot_sw) && (mask & GPIO_IRQ_EDGE_FALL)) {
         if (debounce()) {
-            is_co2 = !is_co2;
+            command.type = WriteType::ROT_SW;
+            send_reading_from_isr();
         }
     } else if ((gpio == rot_a) && (mask & GPIO_IRQ_EDGE_FALL)) {
+        command.type = WriteType::TURN;
         if (gpio_get(rot_b)) {
-            if (position < 1000) position += 100;
+            command.value.u16 = CLOCKWISE;
         } else {
-            if (position > 0) position -= 100;
+            command.value.u16 = COUNTER_CLOCKWISE;
         }
+        send_reading_from_isr();
     } else if ((gpio == button) && (mask & GPIO_IRQ_EDGE_FALL)) {
         if (debounce()) {
             command.type = WriteType::TOGGLE;
-            send_reading_from_isr();
-            command.type = is_co2 ? WriteType::CO2_TARGET : WriteType::FAN_SPEED;
-            command.value.u16 = position;
             send_reading_from_isr();
         }
     }
@@ -69,6 +70,15 @@ void Rotary::send_reading_from_isr() {
     for (const auto subscriber : subscribers) {
         xQueueSendFromISR(subscriber, &command, 0);
     }
+    // xQueueSendFromISR(screen_queue, &command, 0);
+    // xQueueSendFromISR(fan_queue, &command, 0);
+}
+
+void Rotary::set_screen_queue(QueueHandle_t queue) {
+    screen_queue = queue;
+}
+void Rotary::set_fanctrl_queue(QueueHandle_t queue) {
+    fan_queue = queue;
 }
 
 

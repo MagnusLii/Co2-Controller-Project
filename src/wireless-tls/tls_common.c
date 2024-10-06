@@ -225,9 +225,9 @@ static TLS_CLIENT_T* tls_client_init(void) {
 }
 
 /* Debug function to print TLS debug messages */
-static void tlsdebug(void *ctx, int level, const char *file, int line, const char *message) {
-    fputs(message, stdout);  // Output the debug message
-}
+// static void tlsdebug(void *ctx, int level, const char *file, int line, const char *message) {
+//     fputs(message, stdout);  // Output the debug message
+// }
 
 
 /* Main function to run the TLS client test */

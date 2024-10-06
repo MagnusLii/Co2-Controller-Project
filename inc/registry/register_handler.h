@@ -30,7 +30,9 @@ enum class WriteType {
     CO2_TARGET,
     FAN_SPEED,
     MODE_SET,
-    TOGGLE
+    TOGGLE,
+    ROT_SW,
+    TURN
 };
 
 struct Reading {

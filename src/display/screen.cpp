@@ -39,6 +39,7 @@ Screen::Screen(std::shared_ptr<PicoI2C> i2c, uint16_t device_address, uint16_t w
   bar_buf(SPEED_FRAME_WIDTH - 4, SPEED_FRAME_HEIGHT - 4) {
     // display = std::make_unique<ssd1306os>(i2c, device_address, width, height);
     reading_queue = xQueueCreate(20, sizeof(Reading));
+    set_static_shapes();
     xTaskCreate(Screen::screen_task, "SCREEN", 512, this, TaskPriority::ABSOLUTE, NULL);
 }
 
@@ -64,11 +65,26 @@ void Screen::set_target_task(void *pvParameters) {
     Command command;
     while (true) {
         xQueueCRReceive(screen->control_queue, &command, portMAX_DELAY);
-        switch (command.type)
-        {
-        case WriteType::CO2_TARGET:
+        switch (command.type) {
+        case WriteType::ROT_SW:
+            is_manual = !is_manual;
             break;
-        case WriteType::FAN_SPEED:
+        case WriteType::TOGGLE:
+            break;
+        case WriteType::TURN:
+            if (is_manual) {
+                if (command.value.u16 == CLOCKWISE) {
+                    if (fan_speed_local < 1000) fan_speed_local += 100;
+                } else {
+                    if (fan_speed_local > 0) fan_speed_local -= 100;
+                }
+            } else {
+                if (command.value.u16 == CLOCKWISE) {
+                    if (fan_speed_local < 1000) fan_speed_local += 100;
+                } else {
+                    if (fan_speed_local > 0) fan_speed_local -= 100;
+                }
+            }
             break;
         default:
             break;

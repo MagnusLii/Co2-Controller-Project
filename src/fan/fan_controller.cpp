@@ -3,11 +3,15 @@
 #include <cmath>
 #include <iostream>
 
+#define COUNTER_CLOCKWISE 2
+#define CLOCKWISE 1
+
 FanController::FanController(QueueHandle_t fan_speed_q) : speed_queue(fan_speed_q) {
     this->reading_queue = xQueueCreate(5, sizeof(Reading));
-    this->write_queue = xQueueCreate(5, sizeof(Command));
+    this->write_queue = xQueueCreate(20, sizeof(Command));
 
     xTaskCreate(fan_control_task, "FanController", 512, this, TaskPriority::MEDIUM, nullptr);
+    xTaskCreate(fan_read_task, "FanReader", 512, this, TaskPriority::MEDIUM, nullptr);
 }
 
 void FanController::set_initial_values(float co2_target, uint16_t fan_speed, bool is_manual) {
@@ -38,21 +42,42 @@ void FanController::fan_control() {
             }
         }
 
-        Command command;
-        if (xQueueReceive(write_queue, &command, pdMS_TO_TICKS(10))) {
-            if (command.type == WriteType::CO2_TARGET && !manual_mode) {
-                manual_mode = true;
-                co2_target = command.value.f32;
-            } else if (command.type == WriteType::FAN_SPEED && manual_mode) {
-                manual_mode = true;
-                set_speed(command.value.u16);
-            } else if (command.type == WriteType::MODE_SET) {
-                if (command.value.u16 == 0) manual_mode = false;
-                if (command.value.u16 == 1) manual_mode = true;
-            } else if (command.type == WriteType::TOGGLE) {
-                manual_mode = !manual_mode;
-            }
-        }
+        // Command command;
+        // if (xQueueReceive(write_queue, &command, pdMS_TO_TICKS(10))) {
+        //     if (command.type == WriteType::CO2_TARGET && !manual_mode) {
+        //         manual_mode = true;
+        //         co2_target = command.value.f32;
+        //     } else if (command.type == WriteType::FAN_SPEED && manual_mode) {
+        //         manual_mode = true;
+        //         set_speed(command.value.u16);
+        //     } else if (command.type == WriteType::MODE_SET) {
+        //         if (command.value.u16 == 0) manual_mode = false;
+        //         if (command.value.u16 == 1) manual_mode = true;
+        //     } else if (command.type == WriteType::ROT_SW) {
+        //         local_manual_mode = !local_manual_mode;
+        //     } else if (command.type == WriteType::TURN) {
+        //         if (command.value.u16 == CLOCKWISE) {
+        //             if (local_manual_mode) {
+        //                 if (local_speed < 1000) local_speed += 100;
+        //             } else {
+        //                 if (local_co2_target < 1500) local_co2_target += 100;
+        //             }
+        //         } else {
+        //             if (local_manual_mode) {
+        //                 if (local_speed > 0) local_speed -= 100;
+        //             } else {
+        //                 if (local_co2_target > 0) local_co2_target -= 100;
+        //             }
+        //         }
+        //     } else if (command.type == WriteType::TOGGLE) {
+        //         manual_mode = local_manual_mode;
+        //         if (manual_mode) {
+        //             set_speed(local_speed);
+        //         } else {
+        //             co2_target = local_co2_target;
+        //         }
+        //     }
+        // }
 
         if (!manual_mode) {
             if (co2 >= CO2_CRITICAL) {
@@ -65,6 +90,47 @@ void FanController::fan_control() {
 
         // TODO: Need to tune later with the actual machine
         vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}
+
+void FanController::fan_read() {
+    Command command;
+    while (true) {
+        if (xQueueReceive(write_queue, &command, portMAX_DELAY)) {
+            if (command.type == WriteType::CO2_TARGET && !manual_mode) {
+                manual_mode = true;
+                co2_target = command.value.f32;
+            } else if (command.type == WriteType::FAN_SPEED && manual_mode) {
+                manual_mode = true;
+                set_speed(command.value.u16);
+            } else if (command.type == WriteType::MODE_SET) {
+                if (command.value.u16 == 0) manual_mode = false;
+                if (command.value.u16 == 1) manual_mode = true;
+            } else if (command.type == WriteType::ROT_SW) {
+                local_manual_mode = !local_manual_mode;
+            } else if (command.type == WriteType::TURN) {
+                if (command.value.u16 == CLOCKWISE) {
+                    if (local_manual_mode) {
+                        if (local_speed < 1000) local_speed += 100;
+                    } else {
+                        if (local_co2_target < 1500) local_co2_target += 100;
+                    }
+                } else {
+                    if (local_manual_mode) {
+                        if (local_speed > 0) local_speed -= 100;
+                    } else {
+                        if (local_co2_target > 0) local_co2_target -= 100;
+                    }
+                }
+            } else if (command.type == WriteType::TOGGLE) {
+                manual_mode = local_manual_mode;
+                if (manual_mode) {
+                    set_speed(local_speed);
+                } else {
+                    co2_target = local_co2_target;
+                }
+            }
+        }
     }
 }
 
