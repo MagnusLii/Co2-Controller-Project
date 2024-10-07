@@ -39,7 +39,6 @@ void setup_task(void *pvParameters) {
     params->logger = std::make_shared<Logger>(params->i2c_0);
     params->modbus = std::make_shared<ModbusCtrl>(params->uart);
     params->registry = std::make_shared<DeviceRegistry>(params->modbus, params->i2c_1);
-    params->registry->set_initial_values(params->logger->co2_target_return, params->logger->fan_speed_return, false);
 
     params->screen = std::make_shared<Screen>(params->i2c_1);
     params->rotary = std::make_shared<Rotary>();
@@ -69,9 +68,12 @@ void setup_task(void *pvParameters) {
     params->registry->subscribe_to_handler(ReadingType::MODE, params->logger->get_reading_queue_handle());
 
     while (!params->logger->is_done) vTaskDelay(50);
-    params->registry->set_initial_values(params->logger->co2_target_return, params->logger->fan_speed_return, false);
-    params->rotary->set_initial_values(params->logger->co2_target_return, params->logger->fan_speed_return, false);
-    params->screen->set_initial_values(params->logger->co2_target_return, params->logger->fan_speed_return, false);
+    params->registry->set_initial_values(params->logger->return_c02_target(), params->logger->return_fan_speed(),
+                                         params->logger->return_mode());
+    params->rotary->set_initial_values(params->logger->return_c02_target(), params->logger->return_fan_speed(),
+                                       params->logger->return_mode());
+    params->screen->set_initial_values(params->logger->return_c02_target(), params->logger->return_fan_speed(),
+                                       params->logger->return_mode());
 
     vTaskSuspend(NULL);
 }
