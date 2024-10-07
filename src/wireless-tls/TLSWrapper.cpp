@@ -74,7 +74,7 @@ TLSWrapper::TLSWrapper(const std::string& ssid, const std::string& password, uin
 
         // TODO: VERIFY STACK SIZES
         xTaskCreate(process_and_send_sensor_data_task, "Process sensor data task", 512, this, TaskPriority::LOW, nullptr);
-        xTaskCreate(send_field_update_request_task, "Update fields task", 11264, this, TaskPriority::LOW, nullptr); // 512 did not work.
+        // xTaskCreate(send_field_update_request_task, "Update fields task", 10240, this, TaskPriority::LOW, nullptr); // 512 did not work.
         xTaskCreate(get_server_commands_task, "Request commands task", 11264, this, TaskPriority::LOW, nullptr); // 512 did not work.
         xTaskCreate(parse_server_commands_task, "Command parser task", 1024, this, TaskPriority::HIGH, nullptr);
         // xTaskCreate(reconnect_task, "Reconnect task", 512, this, TaskPriority::ABSOLUTE, &reconnect_task_handle);
@@ -203,34 +203,41 @@ void TLSWrapper::process_and_send_sensor_data_task_() {
     }
 }
 
-void TLSWrapper::send_field_update_request_task_(void *asd){
-    Message msg;
-    std::string hostname = THINGSPEAK_HOSTNAME;
-    for(;;){
-        vTaskDelay(1000);
-        if (xQueueReceive(sensor_data_queue, &msg, 0)){
-            // std::lock_guard<Fmutex> exclusive(mutex);
-            // mutex.lock();
-            send_request(hostname, msg.data);
-            // mutex.unlock();
-        }
-    }
-}
+// void TLSWrapper::send_field_update_request_task_(void *asd){
+//     Message msg;
+//     std::string hostname = THINGSPEAK_HOSTNAME;
+//     for(;;){
+//         vTaskDelay(1000);
+//         if (xQueueReceive(sensor_data_queue, &msg, 0)){
+//             // std::lock_guard<Fmutex> exclusive(mutex);
+//             // mutex.lock();
+//             send_request(hostname, msg.data);
+//             // mutex.unlock();
+//         }
+//     }
+// }
 
 void TLSWrapper::get_server_commands_task_(void *param){
+    Message commandMsg;
     Message msg;
     std::string hostname = THINGSPEAK_HOSTNAME;
     create_command_request(msg);
 
 
-
+    int counter = 0;
     for(;;){
-        vTaskDelay(5000);
-        send_request_and_get_response(hostname, msg.data);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        if (xQueueReceive(sensor_data_queue, &msg, 0)){
+            send_request(hostname, msg.data);
+        } else if (counter >= 5){
+            send_request(hostname, msg.data);
+            send_request_and_get_response(hostname, commandMsg.data);
+            counter = 0;
+        }
+        counter++;
     }
 }
 
-#include <iostream>
 void TLSWrapper::parse_server_commands_task_(void *param){
     Message msg;
     Command modeCommand;
