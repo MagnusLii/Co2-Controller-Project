@@ -75,7 +75,7 @@ TLSWrapper::TLSWrapper(const std::string& ssid, const std::string& password, uin
         // TODO: VERIFY STACK SIZES
         xTaskCreate(process_and_send_sensor_data_task, "Process sensor data task", 512, this, TaskPriority::LOW, nullptr);
         // xTaskCreate(send_field_update_request_task, "Update fields task", 10240, this, TaskPriority::LOW, nullptr); // 512 did not work.
-        xTaskCreate(get_server_commands_task, "Request commands task", 11264, this, TaskPriority::LOW, nullptr); // 512 did not work.
+        xTaskCreate(get_server_commands_task, "Request commands task", 14336, this, TaskPriority::LOW, nullptr); // 512 did not work.
         xTaskCreate(parse_server_commands_task, "Command parser task", 1024, this, TaskPriority::HIGH, nullptr);
         // xTaskCreate(reconnect_task, "Reconnect task", 512, this, TaskPriority::ABSOLUTE, &reconnect_task_handle);
 }

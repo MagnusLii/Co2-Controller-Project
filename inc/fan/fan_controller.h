@@ -10,7 +10,7 @@
 #define CO2_MIN       0
 #define CO2_MAX       1500
 #define CO2_CRITICAL  2000
-#define CO2_TOLERANCE 5
+#define CO2_TOLERANCE 0 // we got Keijos blessings.
 #define FAN_MIN       0
 #define FAN_MAX       1000
 #define FAN_STARTUP   300
