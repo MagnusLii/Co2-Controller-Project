@@ -286,10 +286,15 @@ bool send_tls_request(const char *server, const char *request, int timeout) {
     
     TLS_CLIENT_T *state = tls_client_init();
 
+    state->response = NULL;
+
     state->http_request = request;
     state->timeout = timeout;
 
     if (!tls_client_open(server, state)) {
+        //free(state->response);
+        //free(state);
+        //altcp_tls_free_config(tls_config);
         return false;
     }
 
@@ -298,6 +303,7 @@ bool send_tls_request(const char *server, const char *request, int timeout) {
     }
 
     int err = state->error;
+    free(state->response);
     free(state);
     altcp_tls_free_config(tls_config);
 
@@ -312,10 +318,15 @@ bool send_tls_request_and_get_response(const char *server, const char *request, 
     
     TLS_CLIENT_T *state = tls_client_init();
 
+    state->response = NULL;
+
     state->http_request = request;
     state->timeout = timeout;
 
     if (!tls_client_open(server, state)) {
+        //free(state->response);
+        //free(state);
+        //altcp_tls_free_config(tls_config);
         return false;
     }
 
@@ -329,6 +340,7 @@ bool send_tls_request_and_get_response(const char *server, const char *request, 
         *response_len = state->response_len;
     }
 
+    free(state->response);
     free(state);
     altcp_tls_free_config(tls_config);
 
