@@ -19,7 +19,7 @@ QueueHandle_t Logger::get_reading_queue_handle(void) { return reading_queue; }
 void Logger::eeprom_task(void *pvParameters) {
     auto logger = static_cast<Logger *>(pvParameters);
 
-    int co2_tar_read = 0, fan_speed_read = 0, mode_read = 0;
+    int co2_tar_read = 0, fan_speed_read = 0, mode_read = 1;
     int arr[3] = {0, 0, 0};
     logger->fetchData(&co2_tar_read, &fan_speed_read, &mode_read, arr);
 
@@ -51,6 +51,7 @@ void Logger::eeprom_task(void *pvParameters) {
                 break;
         }
         logger->storeData(co2_target, fan_speed, mode);
+        vTaskDelay(5000);
     }
 }
 

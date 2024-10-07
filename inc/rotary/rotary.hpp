@@ -37,8 +37,9 @@ class Rotary {
         float co2_target_local;
         uint16_t fan_speed_local;
         bool is_manual_local;
-        bool toggled;
+        bool toggled = false;
         bool changed = false;
+        bool manual_changed = false;
         std::vector<QueueHandle_t> subscribers;
         QueueHandle_t screen_queue;
         QueueHandle_t fan_queue;

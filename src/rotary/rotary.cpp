@@ -39,6 +39,7 @@ void Rotary::irq_handler(uint gpio, uint32_t mask) {
     if ((gpio == rot_sw) && (mask & GPIO_IRQ_EDGE_FALL)) {
         if (debounce()) {
             this->is_manual_local = !this->is_manual_local;
+            // this->manual_changed = true;
         }
     } else if ((gpio == rot_a) && (mask & GPIO_IRQ_EDGE_FALL)) {
         if (gpio_get(rot_b)) {
@@ -81,6 +82,10 @@ void Rotary::send_task(void *pvParameters) {
                 rot->command.type = WriteType::CO2_TARGET;
                 rot->command.value.f32 = rot->co2_target_local;
             }
+            // if (rot->manual_changed) {
+            //     rot->manual_changed = false;
+            //     rot->command.type = WriteType::ROT_SW;
+            // }
             rot->send_reading();
         }
         vTaskDelay(50);

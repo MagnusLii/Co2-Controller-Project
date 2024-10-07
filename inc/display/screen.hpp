@@ -20,10 +20,13 @@ class Screen {
         static void set_target_task(void *pvParameters);
         void set_static_shapes(void);
         void set_reading_value(Reading &reading);
-        void set_fan_speed_percentage(uint16_t percentage);
-        void set_co2_target(float value);
+        void set_fan_speed_percentage(uint16_t percentage, bool highlight);
+        void set_co2_target(float value, bool highlight);
         void set_bar(uint16_t percentage);
         void set_mode(bool is_manual);
+        bool manual_highlighted = false;
+        float last_co2;
+        uint16_t last_fan_speed;
         std::unique_ptr<ssd1306os> display;
         QueueHandle_t control_queue;
         QueueHandle_t reading_queue;

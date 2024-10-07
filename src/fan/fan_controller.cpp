@@ -25,7 +25,7 @@ FanController::FanController(QueueHandle_t fan_speed_q) : speed_queue(fan_speed_
 
 void FanController::set_initial_values(float co2_target, uint16_t fan_speed, bool is_manual) {
     this->co2_target = co2_target;
-    this->speed = fan_speed;
+    if (is_manual) set_speed(fan_speed);
     this->manual_mode = is_manual;
 }
 
@@ -121,7 +121,7 @@ void FanController::adjust_speed() {
             xTimerStart(clear_valve_block, 0);
         }
     } else {
-        new_speed = (1000/(2000-co2_target))*std::round(distance)+200;
+        new_speed = (1000/(2000-co2_target))*std::round(distance)+100;
     }
 
 

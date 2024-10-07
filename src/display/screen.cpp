@@ -57,7 +57,12 @@ void Screen::screen_task(void *pvParameters) {
     Reading reading;
     while (true) {
         xQueueReceive(screen->reading_queue, &reading, portMAX_DELAY);
-        screen->set_reading_value(reading);
+        if (reading.type == ReadingType::FAN_SPEED) {
+            if (!screen->manual_highlighted)
+                screen->set_fan_speed_percentage(reading.value.u16 / 10, screen->manual_highlighted);
+        } else {
+            screen->set_reading_value(reading);
+        }
         screen->display->show();
     }
 }
@@ -65,20 +70,32 @@ void Screen::screen_task(void *pvParameters) {
 void Screen::set_target_task(void *pvParameters) {
     auto screen = static_cast<Screen *>(pvParameters);
     Command command;
+    bool dehighlight = false;
     while (true) {
-        xQueueReceive(screen->control_queue, &command, portMAX_DELAY);
-        switch (command.type) {
-        case WriteType::MODE_SET:
-            screen->set_mode((bool)command.value.u16);
-            break;
-        case WriteType::FAN_SPEED:
-            screen->set_fan_speed_percentage(command.value.u16 / 10);
-            break;
-        case WriteType::CO2_TARGET:
-            screen->set_co2_target(command.value.f32);
-            break;
-        default:
-            break;
+        while (xQueueReceive(screen->control_queue, &command, 100)) {
+            switch (command.type) {
+            case WriteType::MODE_SET:
+                screen->set_mode((bool)command.value.u16);
+                break;
+            case WriteType::FAN_SPEED:
+                screen->manual_highlighted = true;
+                screen->last_fan_speed = command.value.u16;
+                dehighlight = true;
+                screen->set_fan_speed_percentage(command.value.u16 / 10, true);
+                screen->set_co2_target(screen->last_co2, false);
+                break;
+            case WriteType::CO2_TARGET:
+                screen->manual_highlighted = false;
+                screen->last_co2 = command.value.f32;
+                screen->set_co2_target(command.value.f32, true);
+                if (dehighlight) {
+                    dehighlight = false;
+                    screen->set_fan_speed_percentage(screen->last_fan_speed / 10, false);
+                }
+                break;
+            default:
+                break;
+            }
         }
         screen->display->show();
     }
@@ -127,19 +144,19 @@ void Screen::set_reading_value(Reading &reading) {
     display->blit(reading_blit_buf, READING_X, height); // blit the text
 }
 
-void Screen::set_fan_speed_percentage(uint16_t percentage) {
+void Screen::set_fan_speed_percentage(uint16_t percentage, bool highlight) {
     char text[16];
     snprintf(text, 16, "%hd%%", percentage);
-    reading_blit_buf.fill(0);
-    reading_blit_buf.text(text, 0, 0);
+    reading_blit_buf.fill(highlight ? 1 : 0);
+    reading_blit_buf.text(text, 0, 0, highlight ? 0 : 1);
     display->blit(reading_blit_buf, 3 * CHAR_HEIGHT, SCREEN_HEIGHT - CHAR_HEIGHT);
 }
 
-void Screen::set_co2_target(float value) {
+void Screen::set_co2_target(float value, bool highlight) {
     char text[16];
     snprintf(text, 16, "%.0f", value);
-    reading_blit_buf.fill(0);
-    reading_blit_buf.text(text, 0, 0);
+    reading_blit_buf.fill(highlight ? 1 : 0);
+    reading_blit_buf.text(text, 0, 0, highlight ? 0 : 1);
     display->blit(reading_blit_buf, SCREEN_WIDTH - 6 * CHAR_HEIGHT, SCREEN_HEIGHT - CHAR_HEIGHT);
 }
 
@@ -162,9 +179,12 @@ void Screen::set_mode(bool is_manual) {
 }
 
 void Screen::set_initial_values(float co2_target, uint16_t fan_speed, bool is_manual) {
-    set_co2_target(co2_target);
-    set_fan_speed_percentage(fan_speed);
+    set_co2_target(co2_target, !is_manual);
+    set_fan_speed_percentage(fan_speed / 10, is_manual);
     set_mode(is_manual);
+    manual_highlighted = is_manual;
+    last_co2 = co2_target;
+    last_fan_speed = fan_speed;
 
     display->show();
 }
