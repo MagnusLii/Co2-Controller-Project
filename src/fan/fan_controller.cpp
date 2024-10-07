@@ -1,4 +1,6 @@
 #include "fan_controller.h"
+#include "hardware/gpio.h"
+#include "register_handler.h"
 #include "task_defines.h"
 #include <cmath>
 #include <iostream>
@@ -12,6 +14,13 @@ FanController::FanController(QueueHandle_t fan_speed_q) : speed_queue(fan_speed_
 
     xTaskCreate(fan_control_task, "FanController", 512, this, TaskPriority::MEDIUM, nullptr);
     xTaskCreate(fan_read_task, "FanReader", 512, this, TaskPriority::MEDIUM, nullptr);
+
+    gpio_init(VALVE_PIN);
+    gpio_pull_down(VALVE_PIN);
+
+    this->close_valve = xTimerCreate("CloseValve", pdMS_TO_TICKS(2000), false, nullptr, close_valve_callback);
+    this->clear_valve_block = xTimerCreate("ClearValveBlock", pdMS_TO_TICKS(60000), false, nullptr, clear_valve_block_callback);
+    vTimerSetTimerID(clear_valve_block, this);
 }
 
 void FanController::set_initial_values(float co2_target, uint16_t fan_speed, bool is_manual) {
@@ -32,6 +41,7 @@ bool FanController::get_mode() const { return manual_mode; }
 
 void FanController::fan_control() {
     set_speed(0);
+    xTimerStart(clear_valve_block, 0);
     vTaskDelay(pdMS_TO_TICKS(500));
     for (;;) {
         Reading reading;
@@ -104,6 +114,11 @@ void FanController::adjust_speed() {
     uint16_t new_speed;
     if (distance <= 0) {
         new_speed = 0;
+        if (!valve_opened_recently) {
+            gpio_put(VALVE_PIN, 1);
+            valve_opened_recently = true;
+            xTimerStart(close_valve, 0);
+        }
     } else {
         new_speed = (1000/(2000-co2_target))*std::round(distance)+200;
     }
@@ -154,3 +169,5 @@ ModeReadHandler::ModeReadHandler(std::shared_ptr<FanController> fanctrl, const s
 }
 
 void ModeReadHandler::get_reading() { reading.value.u16 = fanctrl->get_mode(); }
+
+

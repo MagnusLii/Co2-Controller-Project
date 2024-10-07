@@ -1,10 +1,11 @@
 #ifndef FAN_CONTROLLER_H
 #define FAN_CONTROLLER_H
 
+#include "portmacro.h"
 #include "register_handler.h"
 
-#include <memory>
 #include <iostream>
+#include <memory>
 
 #define CO2_MIN       0
 #define CO2_MAX       1500
@@ -13,6 +14,7 @@
 #define FAN_MIN       0
 #define FAN_MAX       1000
 #define FAN_STARTUP   300
+#define VALVE_PIN     27
 
 class FanController {
   public:
@@ -36,6 +38,13 @@ class FanController {
         fanctrl->fan_read();
     }
 
+    static void close_valve_callback(TimerHandle_t xTimer) { gpio_put(VALVE_PIN, 0); }
+
+    static void clear_valve_block_callback(TimerHandle_t xTimer) {
+        auto *fanctrl = static_cast<FanController *>(pvTimerGetTimerID(xTimer));
+        fanctrl->valve_opened_recently = false;
+    }
+
     void set_speed(uint16_t speed);
     void is_fan_spinning(const uint16_t &new_count);
     float distance_to_target() const;
@@ -50,6 +59,9 @@ class FanController {
     float co2 = 0.0;
     float co2_target;
     bool spinning;
+    TimerHandle_t close_valve;
+    TimerHandle_t clear_valve_block;
+    bool valve_opened_recently = true;
     const uint16_t fan_starter = FAN_STARTUP;
 
     // TODO: Do we do this?
