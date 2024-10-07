@@ -221,7 +221,7 @@ void TLSWrapper::get_server_commands_task_(void *param){
     Message commandMsg;
     Message msg;
     std::string hostname = THINGSPEAK_HOSTNAME;
-    create_command_request(msg);
+    create_command_request(commandMsg);
 
 
     int counter = 0;
@@ -230,7 +230,6 @@ void TLSWrapper::get_server_commands_task_(void *param){
         if (xQueueReceive(sensor_data_queue, &msg, 0)){
             send_request(hostname, msg.data);
         } else if (counter >= 5){
-            send_request(hostname, msg.data);
             send_request_and_get_response(hostname, commandMsg.data);
             counter = 0;
         }
