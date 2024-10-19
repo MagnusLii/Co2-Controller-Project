@@ -108,7 +108,6 @@ void FanController::is_fan_spinning(const uint16_t &new_count) {
 float FanController::distance_to_target() const { return co2 - co2_target; }
 
 // Automatic adjustment of the fan speed
-// TODO: Definitely need more tuning with real machine
 void FanController::adjust_speed() {
     const float distance = distance_to_target();
     uint16_t new_speed;
@@ -133,7 +132,7 @@ void FanController::adjust_speed() {
         new_speed = FAN_MIN;
     }
     set_speed(new_speed);
-    std::cout << "Adjusting fan speed to " << speed << std::endl;
+    //std::cout << "Adjusting fan speed to " << speed << std::endl;
 }
 
 void FanCtrlReadHandler::read_fanctrl_register() {

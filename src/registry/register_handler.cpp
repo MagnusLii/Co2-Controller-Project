@@ -55,8 +55,8 @@ void ModbusReadHandler::mb_read() {
         }
         get_reading();
         send_reading();
-        TickType_t delay_time = start_time + reading_interval - xTaskGetTickCount(); // TBD
-        vTaskDelay(delay_time);                                                      // TBD
+        TickType_t delay_time = start_time + reading_interval - xTaskGetTickCount();
+        vTaskDelay(delay_time);
     }
 }
 
@@ -94,7 +94,7 @@ void ModbusWriteHandler::mb_write() {
     }
 }
 
-// I2CHandler - read only for now (I don't think we need to write?)
+// I2CHandler - read only
 I2CHandler::I2CHandler(shared_i2c i2c_i, const uint8_t device_address, const ReadingType rtype, const std::string &name)
     : reg(i2c_i, device_address) {
     this->i2c = i2c_i;
