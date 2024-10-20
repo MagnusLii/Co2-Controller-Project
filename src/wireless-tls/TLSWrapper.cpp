@@ -71,13 +71,16 @@ TLSWrapper::TLSWrapper(const std::string& ssid, const std::string& password, uin
         } while (connected != 0 && retries < 5);
 
 
-
+    #ifdef CONNECTION_DEFINES_H
         // TODO: VERIFY STACK SIZES
         xTaskCreate(process_and_send_sensor_data_task, "Process sensor data task", 512, this, TaskPriority::LOW, nullptr);
-        // xTaskCreate(send_field_update_request_task, "Update fields task", 10240, this, TaskPriority::LOW, nullptr); // 512 did not work.
-        xTaskCreate(get_server_commands_task, "Request commands task", 18432, this, TaskPriority::LOW, nullptr); // 512 did not work.
+        // xTaskCreate(send_field_update_request_task, "Update fields task", 10240, this, TaskPriority::LOW, nullptr); // Combined into next get_server_commands_task to save stack space.
+        xTaskCreate(get_server_commands_task, "Request commands task", 18432, this, TaskPriority::LOW, nullptr);
         xTaskCreate(parse_server_commands_task, "Command parser task", 1024, this, TaskPriority::HIGH, nullptr);
-        // xTaskCreate(reconnect_task, "Reconnect task", 512, this, TaskPriority::ABSOLUTE, &reconnect_task_handle);
+        // xTaskCreate(reconnect_task, "Reconnect task", 512, this, TaskPriority::ABSOLUTE, &reconnect_task_handle); // not needed, no disconnects after stress tests. MBY add to make Keijo happier.
+    #else 
+        printf("TLSWrapper::TLSWrapper: Connection defines not included\n Skipping network task creation\n");
+    #endif
 }
 
 TLSWrapper::~TLSWrapper() {

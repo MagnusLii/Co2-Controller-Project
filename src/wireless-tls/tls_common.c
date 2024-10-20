@@ -17,6 +17,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "connection_defines.h"
+#include "debugPrints.h"
 
 // MODIFIED to add response buffer for response storage
 typedef struct TLS_CLIENT_T_ {
@@ -47,7 +48,7 @@ static err_t tls_client_close(void *arg) {
         altcp_err(state->pcb, NULL);   // Clear the error callback
         err = altcp_close(state->pcb);  // Attempt to close the connection
         if (err != ERR_OK) {  // If close fails, force an abort
-            printf("close failed %d, calling abort\n", err);
+            TLS_COMMONprintf("close failed %d, calling abort\n", err);
             altcp_abort(state->pcb);  // Abort the connection
             err = ERR_ABRT;  // Set the error code to abort
         }
@@ -59,7 +60,7 @@ static err_t tls_client_close(void *arg) {
 static err_t tls_client_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *p, err_t err) {
     TLS_CLIENT_T *state = (TLS_CLIENT_T*)arg;
     if (!p) {
-        printf("connection closed\n");
+        TLS_COMMONprintf("connection closed\n");
         return tls_client_close(state);
     }
 
@@ -74,7 +75,7 @@ static err_t tls_client_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *p, e
         pbuf_copy_partial(p, buf, p->tot_len, 0);
         buf[p->tot_len] = 0;
 
-        printf("***\nnew data received from server:\n***\n\n%s\n", buf);
+        TLS_COMMONprintf("***\nnew data received from server:\n***\n\n%s\n", buf);
 
         // copy response to state
         if (state->response == NULL) {
@@ -84,7 +85,7 @@ static err_t tls_client_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *p, e
             state->response_stored = true;
             state->response_len = p->tot_len;
             } else {
-            printf("failed to allocate memory for response\n");
+            TLS_COMMONprintf("failed to allocate memory for response\n");
             }
         } else {
 
@@ -96,7 +97,7 @@ static err_t tls_client_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *p, e
             state->response_stored = true;
             state->response_len += p->tot_len;
             } else {
-            printf("failed to reallocate memory for response\n");
+            TLS_COMMONprintf("failed to reallocate memory for response\n");
             }
         }
 
@@ -114,15 +115,15 @@ static err_t tls_client_connected(void *arg, struct altcp_pcb *pcb, err_t err) {
     TLS_CLIENT_T *state = (TLS_CLIENT_T*)arg;  // Retrieve the client state
 
     if (err != ERR_OK) {  // If the connection fails
-        printf("connect failed %d\n", err);
+        TLS_COMMONprintf("connect failed %d\n", err);
         return tls_client_close(state);  // Close the connection
     }
 
-    printf("connected to server, sending request\n");
+    TLS_COMMONprintf("connected to server, sending request\n");
     // Write the HTTP request to the server over the TLS connection
     err = altcp_write(state->pcb, state->http_request, strlen(state->http_request), TCP_WRITE_FLAG_COPY);
     if (err != ERR_OK) {  // Handle write errors
-        printf("error writing data, err=%d", err);
+        TLS_COMMONprintf("error writing data, err=%d", err);
         return tls_client_close(state);  // Close the connection
     }
 
@@ -133,7 +134,7 @@ static err_t tls_client_connected(void *arg, struct altcp_pcb *pcb, err_t err) {
 /* Polling callback, executed when the client times out */
 static err_t tls_client_poll(void *arg, struct altcp_pcb *pcb) {
     TLS_CLIENT_T *state = (TLS_CLIENT_T*)arg;  // Retrieve the client state
-    printf("timed out\n");
+    TLS_COMMONprintf("timed out\n");
     state->error = PICO_ERROR_TIMEOUT;  // Set timeout error
     return tls_client_close(arg);  // Close the connection
 }
@@ -141,7 +142,7 @@ static err_t tls_client_poll(void *arg, struct altcp_pcb *pcb) {
 /* Error callback executed when an error occurs */
 static void tls_client_err(void *arg, err_t err) {
     TLS_CLIENT_T *state = (TLS_CLIENT_T*)arg;  // Retrieve the client state
-    printf("tls_client_err %d\n", err);
+    TLS_COMMONprintf("tls_client_err %d\n", err);
     tls_client_close(state);  // Close the connection
     state->error = PICO_ERROR_GENERIC;  // Set a generic error
 }
@@ -151,7 +152,7 @@ static void tls_client_connect_to_server_ip(const ip_addr_t *ipaddr, TLS_CLIENT_
     err_t err;
     u16_t port = 443;  // Default to HTTPS port
 
-    printf("connecting to server IP %s port %d\n", ipaddr_ntoa(ipaddr), port);
+    TLS_COMMONprintf("connecting to server IP %s port %d\n", ipaddr_ntoa(ipaddr), port);
     // Start the TCP connection to the server
     err = altcp_connect(state->pcb, ipaddr, port, tls_client_connected);
     if (err != ERR_OK) {
@@ -164,11 +165,11 @@ static void tls_client_connect_to_server_ip(const ip_addr_t *ipaddr, TLS_CLIENT_
 /* Callback executed when DNS resolution completes */
 static void tls_client_dns_found(const char* hostname, const ip_addr_t *ipaddr, void *arg) {
     if (ipaddr) {  // If DNS resolution was successful
-        printf("DNS resolving complete\n");
+        TLS_COMMONprintf("DNS resolving complete\n");
         // Connect to the server using the resolved IP address
         tls_client_connect_to_server_ip(ipaddr, (TLS_CLIENT_T *) arg);
     } else {  // If DNS resolution failed
-        printf("error resolving hostname %s\n", hostname);
+        TLS_COMMONprintf("error resolving hostname %s\n", hostname);
         tls_client_close(arg);  // Close the client
     }
 }
@@ -182,7 +183,7 @@ static bool tls_client_open(const char *hostname, void *arg) {
     // Create a new TLS-enabled PCB
     state->pcb = altcp_tls_new(tls_config, IPADDR_TYPE_ANY);
     if (!state->pcb) {
-        printf("failed to create pcb\n");
+        TLS_COMMONprintf("failed to create pcb\n");
         return false;
     }
 
@@ -195,7 +196,7 @@ static bool tls_client_open(const char *hostname, void *arg) {
     /* Set Server Name Indication (SNI) */
     mbedtls_ssl_set_hostname((mbedtls_ssl_context *)altcp_tls_context(state->pcb), hostname);
 
-    printf("resolving %s\n", hostname);
+    TLS_COMMONprintf("resolving %s\n", hostname);
 
     // Begin DNS resolution in a thread-safe manner
     cyw43_arch_lwip_begin();
@@ -206,7 +207,7 @@ static bool tls_client_open(const char *hostname, void *arg) {
         tls_client_connect_to_server_ip(&server_ip, state);
     } else if (err != ERR_INPROGRESS) {
         // Handle DNS resolution failure
-        printf("error initiating DNS resolving, err=%d\n", err);
+        TLS_COMMONprintf("error initiating DNS resolving, err=%d\n", err);
         tls_client_close(state->pcb);
     }
 
@@ -220,7 +221,7 @@ static TLS_CLIENT_T* tls_client_init(void) {
     // Allocate memory for the client state structure
     TLS_CLIENT_T *state = (TLS_CLIENT_T *)calloc(1, sizeof(TLS_CLIENT_T));
     if (!state) {
-        printf("failed to allocate state\n");
+        TLS_COMMONprintf("failed to allocate state\n");
         return NULL;
     }
 
