@@ -64,7 +64,6 @@ class FanController {
     bool valve_opened_recently = true;
     const uint16_t fan_starter = FAN_STARTUP;
 
-    // TODO: Do we do this?
     bool manual_mode = false; // if true, stop all automagical fan adjustments
 };
 

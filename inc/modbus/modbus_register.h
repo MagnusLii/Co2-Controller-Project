@@ -1,5 +1,7 @@
 #pragma once
 
+#include "FreeRTOS.h"
+#include "task.h"
 #include "pico/stdlib.h"
 #include "modbus_controller.h"
 
