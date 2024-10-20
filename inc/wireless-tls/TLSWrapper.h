@@ -32,7 +32,6 @@
 #define CONNECTION_TIMEOUT_MS 5000
 #define MAX_BUFFER_SIZE 1024
 #define POLL_TIME_S 10
-#define READING_SEND_INTERVAL 10000
 
 struct Message {
     std::string data;

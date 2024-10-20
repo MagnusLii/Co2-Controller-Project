@@ -173,7 +173,7 @@ void TLSWrapper::process_and_send_sensor_data_task_() {
     }
 
     for (;;) {
-        vTaskDelay(pdMS_TO_TICKS(READING_SEND_INTERVAL));
+        vTaskDelay(pdMS_TO_TICKS(API_REQUEST_INTERVAL));
 
         while (xQueueReceive(reading_queue, &reading, 0) == pdPASS) {
             switch (reading.type) {
@@ -232,7 +232,7 @@ void TLSWrapper::get_server_commands_task_(void *param){
         vTaskDelay(pdMS_TO_TICKS(1000));
         if (xQueueReceive(sensor_data_queue, &msg, 0)){
             send_request(hostname, msg.data);
-        } else if (counter >= 5){
+        } else if (counter >= 5){ // could remove else but reallistically it doesn't matter.
             send_request_and_get_response(hostname, commandMsg.data);
             counter = 0;
         }
@@ -248,7 +248,6 @@ void TLSWrapper::parse_server_commands_task_(void *param){
     std::size_t num_pos;
 
     for(;;){
-        // vTaskDelay(5000);
         if (xQueueReceive(response_queue, &msg, portMAX_DELAY)){
             // Parse the response
             std::cout << msg.data << std::endl;
@@ -317,6 +316,8 @@ std::string TLSWrapper::parse_command_from_http(const std::string& http_response
     return "";
 }
 
+
+// DEPRECATED
 // void TLSWrapper::reconnect_task_(void *param){
 //     for (;;) {
 //         xTaskNotifyWait(0, 0, NULL, portMAX_DELAY);
