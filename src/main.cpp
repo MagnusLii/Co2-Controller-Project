@@ -50,7 +50,7 @@ void setup_task(void *pvParameters) {
     params->registry->subscribe_to_handler(ReadingType::TEMPERATURE, params->connection->get_read_handle());
     params->registry->subscribe_to_handler(ReadingType::CO2_TARGET, params->connection->get_read_handle());
     params->registry->subscribe_to_handler(ReadingType::FAN_SPEED, params->connection->get_read_handle());
-    params->connection->set_write_handle(params->registry->get_write_queue_handle()); //TODO: tslwrapper is not blocking...
+    params->connection->set_write_handle(params->registry->get_write_queue_handle());
     // subscribing screen to wanted reading values
     params->registry->subscribe_to_handler(ReadingType::CO2, params->screen->get_reading_queue_handle());
     params->registry->subscribe_to_handler(ReadingType::TEMPERATURE, params->screen->get_reading_queue_handle());

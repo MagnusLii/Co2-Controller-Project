@@ -143,7 +143,7 @@ class I2CHandler final : public ReadRegisterHandler {
     }
 
     shared_i2c i2c;
-    // Only I2C dev reg we have so lets go and just specify it for now
+    // Only I2C dev reg we have so lets go and just specify it
     PressureRegister reg;
 };
 

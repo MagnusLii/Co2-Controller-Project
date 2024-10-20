@@ -76,7 +76,7 @@ float MODBUSRegister::get_float(void) {
 }
 
 void MODBUSRegister::wait(void) {
-    while (modbus->isbusy()) tight_loop_contents();
+    while (modbus->isbusy()) vTaskDelay(2);
 }
 
 
